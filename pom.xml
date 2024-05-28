@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>code-tester</name>
+  <url>http://xlogistx.io</url>
+  <groupId>org.jc</groupId>
+  <artifactId>code-tester</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+
+  
+ <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+   <scm>
+    <url>https://github.com/fidusio/io-xlogistx.git</url>
+    <connection>scm:git:git://github.com/fidusio/io-xlogistx.git</connection>
+    <developerConnection>scm:git:git://github.com/fidusio/io-xlogistx.git</developerConnection>
+  </scm>
+  
+  <developers>
+    <developer>
+      <id>javaconsigliere</id>
+      <name>Java Consigliere</name>
+      <email>javaconsigliere@gmail.com</email>
+      <url>http://xlogistx.io</url>
+      <organization>XlogistX.IO</organization>
+      <organizationUrl>http://xlogistx.io</organizationUrl>
+      <roles>
+        <role>architect</role>
+        <role>developer</role>
+      </roles>
+      <timezone>America/Los_Angeles</timezone>
+    </developer>
+  </developers>
+
+  <modules>
+
+
+      <module>http</module>
+  </modules>
+  
+  
+  <!-- Version definition -->
+  <properties>
+        <skipTests>true</skipTests>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jdk.version>11</jdk.version>
+        <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
+        <maven-plugin-source.version>3.2.1</maven-plugin-source.version>
+        <maven-resources-plugin.version>3.3.0</maven-resources-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
+        <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+        <maven-javadoc.version>3.4.1</maven-javadoc.version>
+        <exec-maven.version>3.1.0</exec-maven.version>
+
+
+
+        <commons-logging.version>1.2</commons-logging.version>
+        <commons-beanutils.version>1.9.4</commons-beanutils.version>
+        <commons-codec.version>1.15</commons-codec.version>
+        <commons-csv.version>1.10.0</commons-csv.version>
+        <commons-fileupload.version>1.5</commons-fileupload.version>
+        <apache.shiro.version>1.13.0</apache.shiro.version>
+        <ehcache-org.version>3.9.11</ehcache-org.version>
+        <gson.version>2.10.1</gson.version>
+        <javax-cache.version>1.1.1</javax-cache.version>
+        <jakarta-mail.version>2.0.1</jakarta-mail.version>
+        <javax-servlet.version>4.0.1</javax-servlet.version>
+        <jsoup.version>1.17.2</jsoup.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <websocket.version>1.1</websocket.version>
+        <junit.version>5.10.2</junit.version>
+        <java-websocket.version>1.4.1</java-websocket.version>
+        <jsch.version>0.1.55</jsch.version>
+
+        <websocket.version>1.1</websocket.version>
+        <javax-servlet.version>4.0.1</javax-servlet.version>
+
+        <zoxweb-core.version>2.3.7</zoxweb-core.version>
+
+        <xlogistx.version>1.0.0</xlogistx.version>
+        <java-xt-core.version>2.1.1</java-xt-core.version>
+        <squareup.version>38.0.0.20240222</squareup.version>
+
+
+        <slf4j.version>2.0.5</slf4j.version>
+
+
+
+        <cron-util.version>9.2.0</cron-util.version>
+  </properties>
+
+  <build>
+  <directory>target</directory>
+   <resources>
+      <resource>
+        <directory>src/main/java/</directory>
+      </resource>
+      <resource>
+        <directory>src/main/resources/</directory>
+      </resource>
+    </resources>
+
+	<plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+              <source>${jdk.version}</source>
+              <target>${jdk.version}</target>
+          </configuration>
+
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <skipTests>${skipTests}</skipTests>
+        </configuration>
+      </plugin>
+
+
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${maven-resources-plugin.version}</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>${maven-plugin-source.version}</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc.version}</version>
+        <configuration>
+          <failOnError>false</failOnError>
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+       -->
+    </plugins>
+  </build>
+  <dependencyManagement>
+  <dependencies>
+
+
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-params</artifactId>
+          <version>${junit.version}</version>
+          <scope>test</scope>
+      </dependency>
+	
+	<dependency>
+	  <groupId>org.zoxweb</groupId>
+	  <artifactId>zoxweb-core</artifactId>
+	  <version>${zoxweb-core.version}</version>
+	</dependency>
+
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+    </dependency>
+	
+    <dependency>
+      <groupId>javax.websocket</groupId>
+      <artifactId>javax.websocket-api</artifactId>
+      <version>${websocket.version}</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>${javax-servlet.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>${jsoup.version}</version>
+    </dependency>
+	
+    <dependency>
+      <groupId>commons-fileupload</groupId>
+      <artifactId>commons-fileupload</artifactId>
+      <version>${commons-fileupload.version}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>com.sun.mail</groupId>
+        <artifactId>jakarta.mail</artifactId>
+      <version>${jakarta-mail.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.cache</groupId>
+      <artifactId>cache-api</artifactId>
+      <version>${javax-cache.version}</version>
+    </dependency>
+
+	<dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
+	</dependency>
+
+      <dependency>
+          <groupId>com.jcraft</groupId>
+          <artifactId>jsch</artifactId>
+          <version>${jsch.version}</version>
+      </dependency>
+
+
+
+  </dependencies>
+  </dependencyManagement>
+
+</project>
