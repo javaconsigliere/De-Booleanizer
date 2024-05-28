@@ -77,11 +77,12 @@ public class OktaHTTPKeepAlive {
         final OkHttpClient client = getUnsafeOkHttpClient();
 
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
+        System.out.println(params);
         String url = params.stringValue("url");
         int repeat = params.intValue("repeat", 0);
-        boolean keepAliveOn = !params.nameExists("-noka");
+        boolean keepAlive = params.booleanValue("ka");
 
-        System.out.println("Params " + url + " repeat: " + repeat + " keep alive: " + keepAliveOn);
+        System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
 
 
         try {
@@ -90,7 +91,7 @@ public class OktaHTTPKeepAlive {
                     .url(url)
                     .get()
 
-                    .header(HTTPHeader.CONNECTION.getName(), keepAliveOn ? "keep-alive" : "close")
+                    .header(HTTPHeader.CONNECTION.getName(), keepAlive ? "keep-alive" : "close")
                     .build();
 
             int maxLeft = 0;
@@ -106,13 +107,13 @@ public class OktaHTTPKeepAlive {
                        String body =  response.body().string();
                        System.out.println( (body.length() > 1024 ? " body length " + body.length() : body) + " " +
                                response.headers());
-                       String keepAlive = response.headers().get("Keep-Alive");
+                       String keepAliveHeader = response.headers().get("Keep-Alive");
 
-                       if(keepAlive != null) {
+                       if(keepAliveHeader != null) {
                            String[] result = response.headers().get("Keep-Alive").split("[, ;]");
                            ParamUtil.ParamMap nvs = ParamUtil.parse("=", result);
                            maxLeft = nvs.intValue("max", 0);
-                           System.out.println("repeat=" + maxLeft + " Keep-Alive: " +keepAlive);
+                           System.out.println("repeat=" + maxLeft + " Keep-Alive: " +keepAliveHeader);
                        }
                        else
                            maxLeft = 0;
@@ -148,7 +149,7 @@ public class OktaHTTPKeepAlive {
             RateCounter rc = new RateCounter("OverAll");
             rc.register(delta, counter);
 
-            System.out.println("Params " + url + " repeat: " + repeat + " keep alive: " + keepAliveOn + " connection count: " + client.connectionPool().connectionCount());
+            System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
             System.out.println("total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
 
 
