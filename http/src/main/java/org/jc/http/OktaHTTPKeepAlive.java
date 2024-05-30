@@ -5,8 +5,10 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.zoxweb.server.task.TaskUtil;
+import org.zoxweb.shared.http.HTTPAuthScheme;
 import org.zoxweb.shared.http.HTTPHeader;
 import org.zoxweb.shared.util.Const;
+import org.zoxweb.shared.util.GetNameValue;
 import org.zoxweb.shared.util.ParamUtil;
 import org.zoxweb.shared.util.RateCounter;
 
@@ -66,6 +68,61 @@ public class OktaHTTPKeepAlive {
         }
     }
 
+
+    public static void testExpiredKeepAlive(OkHttpClient client, String url, String user, String password)
+    {
+
+        GetNameValue<String> auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
+
+        System.out.println(auth);
+        // First request
+        Request first = new Request.Builder()
+                .url(url+"/sleep-test/1s")
+                .header(auth.getName(), auth.getValue())
+
+                .header(HTTPHeader.CONNECTION.getName(), "keep-alive")
+                .build();
+
+
+        Request second = new Request.Builder()
+                .url(url+"/sleep-test/8s")
+                .get()
+
+                .header(HTTPHeader.CONNECTION.getName(), "keep-alive")
+                .header(auth.getName(), auth.getValue())
+                .build();
+
+
+        try (Response response = client.newCall(first).execute())
+        {
+            if (response.isSuccessful())
+            {
+                System.out.println("First " + response.body().string() + " " + response.headers());
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        try (Response response = client.newCall(second).execute())
+        {
+            if (response.isSuccessful())
+            {
+                System.out.println("second " + response.body().string() + " " + response.headers());
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+
+
+
+    }
+
+
     public static void main(String[] args) {
 //        OkHttpClient client = new OkHttpClient.Builder()
 //                .connectionPool(new ConnectionPool(5, 5, TimeUnit.SECONDS))
@@ -81,7 +138,8 @@ public class OktaHTTPKeepAlive {
         String url = params.stringValue("url");
         int repeat = params.intValue("repeat", 0);
         boolean keepAlive = params.booleanValue("ka");
-
+        String user = params.stringValue("user", true);
+        String password = params.stringValue("password", true);
         System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
 
 
@@ -98,6 +156,8 @@ public class OktaHTTPKeepAlive {
 
             int counter = 0;
 
+
+            int kaCounter = 0;
 
             // test keep alive on request
             do
@@ -118,11 +178,14 @@ public class OktaHTTPKeepAlive {
                        else
                            maxLeft = 0;
                    } else {
-                       System.out.println("First request failed: " + response.message());
+                       System.out.println("First request failed: " + response.headers());
                    }
                    System.out.println("**************************************************************************");
+                   kaCounter++;
                }
             }while(maxLeft > 0);
+
+
 
             long delta = System.currentTimeMillis();
 
@@ -149,6 +212,7 @@ public class OktaHTTPKeepAlive {
             RateCounter rc = new RateCounter("OverAll");
             rc.register(delta, counter);
 
+            System.out.println("keep alive counter: " + kaCounter);
             System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
             System.out.println("total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
 
