@@ -1,9 +1,8 @@
 package org.jc.http;
 // OktaHTTPKeepAlive
 
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.zoxweb.server.task.TaskUtil;
 import org.zoxweb.shared.http.HTTPAuthScheme;
 import org.zoxweb.shared.http.HTTPHeader;
@@ -61,6 +60,8 @@ public class OktaHTTPKeepAlive {
             builder.connectTimeout(30, TimeUnit.SECONDS);
             builder.readTimeout(30, TimeUnit.SECONDS);
             builder.writeTimeout(30, TimeUnit.SECONDS);
+            builder.connectionPool(new ConnectionPool(10, 5, TimeUnit.SECONDS));
+            builder.dispatcher(new Dispatcher(TaskUtil.defaultTaskProcessor()));
             //builder.connectionPool(new ConnectionPool(10, 10, TimeUnit.SECONDS));
             return builder.build();
         } catch (Exception e) {
@@ -131,6 +132,8 @@ public class OktaHTTPKeepAlive {
 //                .build();
 
 
+
+
         final OkHttpClient client = getUnsafeOkHttpClient();
 
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
@@ -141,16 +144,21 @@ public class OktaHTTPKeepAlive {
         String user = params.stringValue("user", true);
         String password = params.stringValue("password", true);
         System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
-
+        GetNameValue<String> auth = null;
+        if(user != null && password != null)
+            auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
 
         try {
             // First request
-            Request request = new Request.Builder()
+            Request.Builder requestBuilder = new Request.Builder()
                     .url(url)
                     .get()
 
-                    .header(HTTPHeader.CONNECTION.getName(), keepAlive ? "keep-alive" : "close")
-                    .build();
+                    .header(HTTPHeader.CONNECTION.getName(), keepAlive ? "keep-alive" : "close");
+            if(auth != null)
+                requestBuilder.header(auth.getName(), auth.getValue());
+
+            Request request = requestBuilder.build();
 
             int maxLeft = 0;
 
@@ -188,7 +196,6 @@ public class OktaHTTPKeepAlive {
 
 
             long delta = System.currentTimeMillis();
-
             for(counter = 0; counter < repeat; counter++)
             {
                 TaskUtil.defaultTaskProcessor().execute(()->{
@@ -206,15 +213,47 @@ public class OktaHTTPKeepAlive {
                 });
 
             }
-
-
-            delta = TaskUtil.waitIfBusyThenClose(50) - delta;
-            RateCounter rc = new RateCounter("OverAll");
-            rc.register(delta, counter);
+            delta = TaskUtil.waitIfBusy(50) - delta;
+            RateCounter rc = new RateCounter("OverAll")
+                    .register(delta, counter);
 
             System.out.println("keep alive counter: " + kaCounter);
             System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
             System.out.println("total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
+
+
+
+            delta = System.currentTimeMillis();
+            for(counter = 0; counter < repeat; counter++)
+            {
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                        e.printStackTrace();
+                        System.out.println("Request failed: " + e.getMessage());
+                    }
+
+                    @Override
+                    public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                        response.close();
+                    }
+                });
+
+            }
+            delta = TaskUtil.waitIfBusy(50) - delta;
+            rc.reset()
+                .register(delta, counter);
+
+            System.out.println("keep alive counter: " + kaCounter);
+            System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
+            System.out.println("total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
+
+
+
+
+
+
+            TaskUtil.waitIfBusyThenClose(50);
 
 
         } catch (IOException e) {
