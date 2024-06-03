@@ -14,14 +14,18 @@ import org.zoxweb.shared.util.RateCounter;
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.security.cert.CertificateException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class OktaHTTPKeepAlive {
 
 
 
 
-    public static OkHttpClient getUnsafeOkHttpClient(int connectionPool, long kaTimeoutMillis) {
+    public static OkHttpClient getUnsafeOkHttpClient(ExecutorService executorService, int connectionPool, long kaTimeoutMillis) {
         try {
             // Create a trust manager that does not validate certificate chains
             final TrustManager[] trustAllCerts = new TrustManager[]{
@@ -44,7 +48,7 @@ public class OktaHTTPKeepAlive {
             // Install the all-trusting trust manager
             final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-            // Create an ssl socket factory with our all-trusting manager
+            // Create a ssl socket factory with our all-trusting manager
             final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 
             OkHttpClient.Builder builder = new OkHttpClient.Builder();
@@ -62,7 +66,7 @@ public class OktaHTTPKeepAlive {
             builder.writeTimeout(20, TimeUnit.SECONDS);
             if(connectionPool>0)
                 builder.connectionPool(new ConnectionPool(connectionPool, kaTimeoutMillis, TimeUnit.MILLISECONDS));
-            builder.dispatcher(new Dispatcher(TaskUtil.defaultTaskProcessor()));
+            builder.dispatcher(new Dispatcher(executorService));
             //builder.connectionPool(new ConnectionPool(10, 10, TimeUnit.SECONDS));
             return builder.build();
         } catch (Exception e) {
@@ -146,12 +150,16 @@ public class OktaHTTPKeepAlive {
         String password = params.stringValue("password", true);
         int connectionPool = params.intValue("cp", 0);
         boolean async = params.booleanValue("async", true);
+        boolean javaes = params.booleanValue("javaes", true);
         long kaTimeout = Const.TimeInMillis.toMillis(params.stringValue("kato", "5s"));
         System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
         GetNameValue<String> auth = null;
         if(user != null && password != null)
             auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
-        final OkHttpClient client = getUnsafeOkHttpClient(connectionPool, kaTimeout);
+
+        ExecutorService executorService = javaes ? Executors.newCachedThreadPool() : TaskUtil.defaultTaskProcessor();
+
+        final OkHttpClient client = getUnsafeOkHttpClient(executorService, connectionPool, kaTimeout);
         try {
             // First request
             Request.Builder requestBuilder = new Request.Builder()
@@ -198,27 +206,32 @@ public class OktaHTTPKeepAlive {
             }while(maxLeft > 0);
 
 
+            AtomicLong execCounter = new AtomicLong();
             if(!async) {
                 long delta = System.currentTimeMillis();
                 for (counter = 0; counter < repeat; counter++) {
-                    TaskUtil.defaultTaskProcessor().execute(() -> {
+                    executorService.execute(() -> {
                         try (Response response = client.newCall(request).execute()) {
-                            if (!response.isSuccessful()) {
+                            if (!response.isSuccessful() || response.code() != 200) {
                                 System.out.println("First request failed: " + response.message());
                             }
+                            else
+                                execCounter.incrementAndGet();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                     });
 
                 }
-                delta = TaskUtil.waitIfBusy(50) - delta;
+
+
+                delta = TaskUtil.completeTermination(executorService, 50) - delta;
                 RateCounter rc = new RateCounter("OverAll")
                         .register(delta, counter);
 
                 System.out.println("keep alive counter: " + kaCounter);
                 System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
-                System.out.println("Sync total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
+                System.out.println("Sync total sent: " + counter + " total executed " + execCounter.get() + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
             }
             else {
 
@@ -234,24 +247,25 @@ public class OktaHTTPKeepAlive {
                         @Override
                         public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                             response.close();
+                            execCounter.incrementAndGet();
                         }
                     });
 
                 }
-                delta = TaskUtil.waitIfBusy(50) - delta;
+                delta = TaskUtil.completeTermination(executorService, 50) - delta;
                 RateCounter rc = new RateCounter("async")
                         .register(delta, counter);
 
                 System.out.println("keep alive counter: " + kaCounter);
                 System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
-                System.out.println("Async total sent: " + counter + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
+                System.out.println("Async total sent: " + counter + " total executed " + execCounter.get() + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
             }
 
 
 
 
 
-            TaskUtil.waitIfBusyThenClose(50);
+           // TaskUtil.waitIfBusyThenClose(50);
 
 
         } catch (IOException e) {
