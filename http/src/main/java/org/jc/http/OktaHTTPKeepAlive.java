@@ -21,7 +21,7 @@ public class OktaHTTPKeepAlive {
 
 
 
-    public static OkHttpClient getUnsafeOkHttpClient(int connectionPool) {
+    public static OkHttpClient getUnsafeOkHttpClient(int connectionPool, long kaTimeoutMillis) {
         try {
             // Create a trust manager that does not validate certificate chains
             final TrustManager[] trustAllCerts = new TrustManager[]{
@@ -57,11 +57,11 @@ public class OktaHTTPKeepAlive {
             });
 
             // Optionally configure timeouts
-            builder.connectTimeout(30, TimeUnit.SECONDS);
-            builder.readTimeout(30, TimeUnit.SECONDS);
-            builder.writeTimeout(30, TimeUnit.SECONDS);
+            builder.connectTimeout(20, TimeUnit.SECONDS);
+            builder.readTimeout(20, TimeUnit.SECONDS);
+            builder.writeTimeout(20, TimeUnit.SECONDS);
             if(connectionPool>0)
-                builder.connectionPool(new ConnectionPool(connectionPool, 5, TimeUnit.SECONDS));
+                builder.connectionPool(new ConnectionPool(connectionPool, kaTimeoutMillis, TimeUnit.MILLISECONDS));
             builder.dispatcher(new Dispatcher(TaskUtil.defaultTaskProcessor()));
             //builder.connectionPool(new ConnectionPool(10, 10, TimeUnit.SECONDS));
             return builder.build();
@@ -146,11 +146,12 @@ public class OktaHTTPKeepAlive {
         String password = params.stringValue("password", true);
         int connectionPool = params.intValue("cp", 0);
         boolean async = params.booleanValue("async", true);
+        long kaTimeout = Const.TimeInMillis.toMillis(params.stringValue("kato", "5s"));
         System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
         GetNameValue<String> auth = null;
         if(user != null && password != null)
             auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
-        final OkHttpClient client = getUnsafeOkHttpClient(connectionPool);
+        final OkHttpClient client = getUnsafeOkHttpClient(connectionPool, kaTimeout);
         try {
             // First request
             Request.Builder requestBuilder = new Request.Builder()
