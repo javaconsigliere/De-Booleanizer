@@ -17,7 +17,6 @@ import java.security.cert.CertificateException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class OktaHTTPKeepAlive {
@@ -204,6 +203,7 @@ public class OktaHTTPKeepAlive {
                    kaCounter++;
                }
             }while(maxLeft > 0);
+            System.out.println("keep alive counter: " + kaCounter);
 
 
             AtomicLong execCounter = new AtomicLong();
@@ -229,7 +229,6 @@ public class OktaHTTPKeepAlive {
                 RateCounter rc = new RateCounter("OverAll")
                         .register(delta, counter);
 
-                System.out.println("keep alive counter: " + kaCounter);
                 System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
                 System.out.println("Sync total sent: " + counter + " total executed " + execCounter.get() + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
             }
@@ -256,7 +255,7 @@ public class OktaHTTPKeepAlive {
                 RateCounter rc = new RateCounter("async")
                         .register(delta, counter);
 
-                System.out.println("keep alive counter: " + kaCounter);
+
                 System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
                 System.out.println("Async total sent: " + counter + " total executed " + execCounter.get() + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
             }
