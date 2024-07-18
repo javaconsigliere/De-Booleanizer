@@ -3,6 +3,7 @@ package org.jc.http;
 
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
+import org.zoxweb.server.net.ssl.SSLCheckDisabler;
 import org.zoxweb.server.task.TaskUtil;
 import org.zoxweb.shared.http.HTTPAuthScheme;
 import org.zoxweb.shared.http.HTTPHeader;
@@ -11,9 +12,10 @@ import org.zoxweb.shared.util.GetNameValue;
 import org.zoxweb.shared.util.ParamUtil;
 import org.zoxweb.shared.util.RateCounter;
 
-import javax.net.ssl.*;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
-import java.security.cert.CertificateException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -24,34 +26,17 @@ public class OktaHTTPKeepAlive {
 
 
 
+
+
+
+
     public static OkHttpClient getUnsafeOkHttpClient(ExecutorService executorService, int connectionPool, long kaTimeoutMillis) {
         try {
             // Create a trust manager that does not validate certificate chains
-            final TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
-                        }
 
-                        @Override
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
-                        }
-
-                        @Override
-                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                            return new java.security.cert.X509Certificate[]{};
-                        }
-                    }
-            };
-
-            // Install the all-trusting trust manager
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-            // Create a ssl socket factory with our all-trusting manager
-            final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 
             OkHttpClient.Builder builder = new OkHttpClient.Builder();
-            builder.sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0]);
+            builder.sslSocketFactory(SSLCheckDisabler.SINGLETON.getSSLFactory(), (X509TrustManager) SSLCheckDisabler.SINGLETON.getTrustManagers()[0]);
             builder.hostnameVerifier(new HostnameVerifier() {
                 @Override
                 public boolean verify(String hostname, SSLSession session) {
