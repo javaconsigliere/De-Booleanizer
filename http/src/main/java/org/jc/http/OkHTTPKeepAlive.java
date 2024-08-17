@@ -12,8 +12,6 @@ import org.zoxweb.shared.util.GetNameValue;
 import org.zoxweb.shared.util.ParamUtil;
 import org.zoxweb.shared.util.RateCounter;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -37,12 +35,7 @@ public class OkHTTPKeepAlive {
 
             OkHttpClient.Builder builder = new OkHttpClient.Builder();
             builder.sslSocketFactory(SSLCheckDisabler.SINGLETON.getSSLFactory(), (X509TrustManager) SSLCheckDisabler.SINGLETON.getTrustManagers()[0]);
-            builder.hostnameVerifier(new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            });
+            builder.hostnameVerifier(SSLCheckDisabler.SINGLETON.getHostnameVerifier());
 
             // Optionally configure timeouts
             builder.connectTimeout(20, TimeUnit.SECONDS);
