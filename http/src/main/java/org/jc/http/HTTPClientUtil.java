@@ -4,7 +4,7 @@ import okhttp3.*;
 import org.zoxweb.shared.http.HTTPMessageConfig;
 import org.zoxweb.shared.http.HTTPMessageConfigInterface;
 import org.zoxweb.shared.http.HTTPMethod;
-import org.zoxweb.shared.net.InetSocketAddressDAO;
+import org.zoxweb.shared.net.IPAddress;
 import org.zoxweb.shared.util.GetNameValue;
 import org.zoxweb.shared.util.NVGenericMap;
 
@@ -27,7 +27,7 @@ public class HTTPClientUtil {
         }
 
         // Proxy configuration
-        InetSocketAddressDAO proxyAddress = config.getProxyAddress();
+        IPAddress proxyAddress = config.getProxyAddress();
         if (proxyAddress != null) {
             builder.proxy(new java.net.Proxy(java.net.Proxy.Type.HTTP,
                     new java.net.InetSocketAddress(proxyAddress.getInetAddress(), proxyAddress.getPort())));
