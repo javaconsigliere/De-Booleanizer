@@ -1,3 +1,5 @@
+package org.jc;
+
 import org.junit.jupiter.api.Test;
 
 public class NumberTest {

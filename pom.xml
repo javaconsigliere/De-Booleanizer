@@ -42,9 +42,7 @@
   </developers>
 
   <modules>
-
-
-      <module>http</module>
+      <module>apps</module>
   </modules>
   
   
@@ -81,6 +79,7 @@
         <java-websocket.version>RELEASE</java-websocket.version>
         <jsch.version>RELEASE</jsch.version>
         <jimfs.version>RELEASE</jimfs.version>
+        <tess4j.version>RELEASE</tess4j.version>
 
 
         <websocket.version>1.1</websocket.version>
@@ -268,6 +267,25 @@
           <artifactId>jimfs</artifactId>
           <version>${jimfs.version}</version>
       </dependency>
+
+      <dependency>
+          <groupId>net.sourceforge.tess4j</groupId>
+          <artifactId>tess4j</artifactId>
+          <version>${tess4j.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna</artifactId>
+          <version>RELEASE</version>
+      </dependency>
+
+      <dependency>
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna-platform</artifactId>
+          <version>RELEASE</version>
+      </dependency>
+
 
 
 
