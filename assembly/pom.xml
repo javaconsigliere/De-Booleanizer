@@ -10,20 +10,9 @@
     </parent>
 
 
-    <artifactId>org.jc.apps</artifactId>
-    <version>${cd.project.version}</version>
-    <packaging>jar</packaging>
+    <name>code-tester-assembly</name>
+    <artifactId>code-tester-assembly</artifactId>
 
-
-
-
-
-    <!--<repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>-->
 
 
     <dependencies>
@@ -31,6 +20,12 @@
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jc</groupId>
+            <artifactId>org.jc.apps</artifactId>
+            <version>${cd.project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.zoxweb</groupId>
@@ -70,4 +65,38 @@
 
     </dependencies>
 
+    <build>
+        <finalName>xlogistx-fat</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>assembly.xml</descriptor>
+                            </descriptors>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.jc.assembly.Main</mainClass> <!-- Specify your main class here -->
+                                </manifest>
+                            </archive>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
+
+
+
