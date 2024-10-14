@@ -3,14 +3,19 @@ package org.jc.chatgpt;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.sourceforge.tess4j.TesseractException;
 import org.jc.imaging.ocr.OCRSelection;
 import org.jc.imaging.ocr.OCRUtil;
+import org.zoxweb.server.http.HTTPCall;
 import org.zoxweb.server.io.UByteArrayOutputStream;
 import org.zoxweb.server.logging.LogWrapper;
-import org.zoxweb.shared.util.Const;
-import org.zoxweb.shared.util.NVGenericMap;
-import org.zoxweb.shared.util.ParamUtil;
-import org.zoxweb.shared.util.RateCounter;
+import org.zoxweb.server.task.TaskUtil;
+import org.zoxweb.server.util.GSONUtil;
+import org.zoxweb.shared.http.HTTPMessageConfigInterface;
+import org.zoxweb.shared.http.HTTPMethod;
+import org.zoxweb.shared.http.HTTPResponseData;
+import org.zoxweb.shared.http.HTTPStatusCode;
+import org.zoxweb.shared.util.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -19,7 +24,8 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class CaptureToChatGPT extends JFrame {
 
@@ -28,23 +34,27 @@ public class CaptureToChatGPT extends JFrame {
     private JButton stopButton;
     private JButton clearPromptButton;
     private JButton selectButton;
+    private JButton manualButton;
     private JTextField refreshRateField;
     private JTextArea promptTextArea;
     private JTextArea resultTextArea;
+    private JTextField imageFileName;
 
     private OCRSelection ocrSelection;
     private BufferedImage lastCapture;
 
 
     static private Rectangle selectedArea;
-    private Timer timer;
     private RateCounter rc = new RateCounter("app");
-    private AtomicBoolean isRunning = new AtomicBoolean(false);
+
+    //private AtomicBoolean isRunning = new AtomicBoolean(false);
 
     // API keys (replace with your actual keys)
     private static String ocrApiKey = null; // Replace with your OCR.space API key
-    private static String openAiApiKey = null; // Replace with your OpenAI API key
-
+    private static String openAIApiKey = null; // Replace with your OpenAI API key
+    private static String openAIApiURL = null;
+    private static String openAIModel = null;
+    private Future<?> future = null;
     public CaptureToChatGPT() {
         setTitle("Screen OCR ChatGPT Application");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -119,6 +129,7 @@ public class CaptureToChatGPT extends JFrame {
     private void initComponents() {
         // Panel for controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        manualButton = new JButton("Manual");
         startButton = new JButton("Start");
         stopButton = new JButton("Stop");
         clearPromptButton = new JButton("Clear Prompt");
@@ -127,8 +138,9 @@ public class CaptureToChatGPT extends JFrame {
         ocrSelection.selectionBox.setName("OCR");
 
         refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
-
+        imageFileName = new JTextField(20);
         //controlPanel.add(selectButton);
+        controlPanel.add(manualButton);
         controlPanel.add(startButton);
         controlPanel.add(stopButton);
         controlPanel.add(clearPromptButton);
@@ -137,6 +149,9 @@ public class CaptureToChatGPT extends JFrame {
 
         controlPanel.add(new JLabel("OCR"));
         controlPanel.add(ocrSelection.selectionBox);
+
+        controlPanel.add(new JLabel("Filename"));
+        controlPanel.add(imageFileName);
 
         // Text areas for OCR text and result
 //        promptTextArea = new JTextArea(10, 40);
@@ -174,6 +189,15 @@ public class CaptureToChatGPT extends JFrame {
         // Button actions
         selectButton.addActionListener(e -> selectProcessing());
         startButton.addActionListener(e -> startProcessing());
+        manualButton.addActionListener(e->{
+            try {
+                processChatGPT();
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        });
         clearPromptButton.addActionListener(e -> promptTextArea.setText(""));
 
 
@@ -192,11 +216,114 @@ public class CaptureToChatGPT extends JFrame {
         stopButton.setEnabled(false);
     }
 
-    private void startProcessing() {
-        if (isRunning.get()) {
-            return;
+    private NVGenericMap processChatGPT() throws AWTException, IOException, TesseractException
+    {
+
+        String prompt = null;
+        // Capture the selected screen area
+        BufferedImage image = OCRUtil.SINGLETON.captureSelectedArea(selectedArea);
+
+
+        rc.start();
+        if (OCRUtil.SINGLETON.compareImages(image, lastCapture)) {
+            lastCapture = image;
+            rc.stop();
+            if (log.isEnabled()) log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
+            return null;
+        } else {
+            lastCapture = image;
         }
-        isRunning.set(true);
+        String filename = SharedStringUtil.trimOrNull(imageFileName.getText());
+        if(filename != null) {
+            ImageIO.write(image, SharedStringUtil.valueAfterRightToken(filename, "."), new File(filename));
+            log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(filename, ".") +
+                    " filename: " + filename);
+        }
+
+        if (log.isEnabled()) log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
+        String text = null;
+
+        NVGenericMap selectionInfo = ocrSelection.getSelectionInfo();
+        if (selectionInfo != null)
+        {
+            switch (selectionInfo.getName())
+            {
+                case "local-ocr":
+                    text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
+                    break;
+
+                case "remote-ocr":
+                    // Perform OCR
+                    text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
+                    break;
+            }
+            prompt = text;
+            String textToDisplay = prompt;
+            SwingUtilities.invokeLater(() -> promptTextArea.setText(textToDisplay));
+        }
+        else
+        {
+            prompt = promptTextArea.getText();
+        }
+        NVGenericMap request = null;
+        NVGenericMap response = null;
+
+        if (!SharedStringUtil.isEmpty(prompt))
+        {
+            UByteArrayOutputStream baos = new UByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
+            // chat gpt API
+            request = ChatGPTUtil.toData(openAIModel, prompt,"png",5000, baos);
+            HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, openAIApiKey, request);
+            HTTPResponseData rd = HTTPCall.send(hmci);
+
+            if(rd.getStatus() == HTTPStatusCode.OK.CODE)
+            {
+                response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
+                System.out.println(response);
+                NVGenericMapList choices = (NVGenericMapList) response.get("choices");
+
+
+                System.out.println(choices);
+                NVGenericMap firstChoice = choices.getValue().get(0);
+                System.out.println(firstChoice);
+                NVGenericMap message = (NVGenericMap) firstChoice.get("message");
+
+                System.out.println("Content\n" + message.getValue("content"));
+
+                SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
+            }
+        }
+
+
+//                    // Save image (optional)
+//                    ImageIO.write(image, "png", new File("screenshot.png"));
+//
+//                    // Perform OCR
+//                    ocrText = performOCRWithOCRSpace("screenshot.png", ocrApiKey);
+
+        // Update OCR text area
+
+        // Send to ChatGPT
+//                    String response = sendToChatGPT(ocrText, openAiApiKey);
+//
+//                    // Update result text area
+//                    SwingUtilities.invokeLater(() -> resultTextArea.setText(response));
+
+
+
+
+
+
+        return response;
+    }
+
+
+    private void startProcessing() {
+        if(future != null)
+            future.cancel(true);
+
+
 
         // Disable start button and enable stop button
         startButton.setEnabled(false);
@@ -230,66 +357,83 @@ public class CaptureToChatGPT extends JFrame {
 //
 //        this.setEnabled(true);
         // Set up timer task
-        timer = new Timer(refreshRate, e -> {
-            new Thread(() -> {
-                try {
-                    // Capture the selected screen area
-                    BufferedImage image = OCRUtil.SINGLETON.captureSelectedArea(selectedArea);
-
-                    rc.start();
-                    if (OCRUtil.SINGLETON.compareImages(image, lastCapture)) {
-                        lastCapture = image;
-                        rc.stop();
-                        if (log.isEnabled()) log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
-                        return;
-                    } else {
-                        lastCapture = image;
-                    }
-
-                    if (log.isEnabled()) log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
-                    String text = null;
-
-                    NVGenericMap selectionInfo = ocrSelection.getSelectionInfo();
-                    if (selectionInfo != null)
-                    {
-                        switch (selectionInfo.getName())
-                        {
-                            case "local-ocr":
-                                text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
-                                break;
-
-                            case "remote-ocr":
-                                // Perform OCR
-                                text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
-                                break;
-                        }
-                        String ocrText = text;
-                        SwingUtilities.invokeLater(() -> promptTextArea.setText(ocrText));
-                    }
-
-
-//                    // Save image (optional)
-//                    ImageIO.write(image, "png", new File("screenshot.png"));
+//        timer = new Timer(refreshRate, e -> {
+//            new Thread(() -> {
+//                try {
+////                    // Capture the selected screen area
+////                    BufferedImage image = OCRUtil.SINGLETON.captureSelectedArea(selectedArea);
+////
+////
+////                    rc.start();
+////                    if (OCRUtil.SINGLETON.compareImages(image, lastCapture)) {
+////                        lastCapture = image;
+////                        rc.stop();
+////                        if (log.isEnabled()) log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
+////                        return;
+////                    } else {
+////                        lastCapture = image;
+////                    }
+////                    String filename = SharedStringUtil.trimOrNull(imageFileName.getText());
+////                    if(filename != null) {
+////                        ImageIO.write(image, SharedStringUtil.valueAfterRightToken(filename, "."), new File(filename));
+////                        log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(filename, ".") +
+////                                " filename: " + filename);
+////                    }
+////
+////                    if (log.isEnabled()) log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
+////                    String text = null;
+////
+////                    NVGenericMap selectionInfo = ocrSelection.getSelectionInfo();
+////                    if (selectionInfo != null)
+////                    {
+////                        switch (selectionInfo.getName())
+////                        {
+////                            case "local-ocr":
+////                                text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
+////                                break;
+////
+////                            case "remote-ocr":
+////                                // Perform OCR
+////                                text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
+////                                break;
+////                        }
+////                        String ocrText = text;
+////                        SwingUtilities.invokeLater(() -> promptTextArea.setText(ocrText));
+////                    }
+//                    processGPT();
 //
-//                    // Perform OCR
-//                    ocrText = performOCRWithOCRSpace("screenshot.png", ocrApiKey);
-
-                    // Update OCR text area
-
-                    return;
-                    // Send to ChatGPT
-//                    String response = sendToChatGPT(ocrText, openAiApiKey);
+////                    // Save image (optional)
+////                    ImageIO.write(image, "png", new File("screenshot.png"));
+////
+////                    // Perform OCR
+////                    ocrText = performOCRWithOCRSpace("screenshot.png", ocrApiKey);
 //
-//                    // Update result text area
-//                    SwingUtilities.invokeLater(() -> resultTextArea.setText(response));
+//                    // Update OCR text area
+//
+//                    return;
+//                    // Send to ChatGPT
+////                    String response = sendToChatGPT(ocrText, openAiApiKey);
+////
+////                    // Update result text area
+////                    SwingUtilities.invokeLater(() -> resultTextArea.setText(response));
+//
+//                } catch (Exception ex) {
+//                    ex.printStackTrace();
+//                }
+//            }).start();
+//        });
+//        timer.setInitialDelay(0); // Start immediately
+//        timer.start();
 
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }).start();
-        });
-        timer.setInitialDelay(0); // Start immediately
-        timer.start();
+        future = TaskUtil.defaultTaskScheduler().scheduleAtFixedRate(()->{try
+        {
+            processChatGPT();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        }, 0, refreshRate, TimeUnit.MILLISECONDS);
     }
 
     private void stopProcessing() {
@@ -297,14 +441,11 @@ public class CaptureToChatGPT extends JFrame {
         startButton.setEnabled(true);
         stopButton.setEnabled(false);
         this.setEnabled(true);
-        if (!isRunning.get()) {
-            return;
-        }
-        isRunning.set(false);
 
         // Stop the timer
-        if (timer != null) {
-            timer.stop();
+        if (future != null) {
+            future.cancel(true);
+            lastCapture = null;
         }
     }
 
@@ -484,21 +625,6 @@ public class CaptureToChatGPT extends JFrame {
         }
     }
 
-    // Helper function to read file to byte array (same as before)
-    private static byte[] readFileToByteArray(File file) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        FileInputStream fis = new FileInputStream(file);
-
-        byte[] buffer = new byte[1024];
-        int readNum;
-
-        while ((readNum = fis.read(buffer)) != -1) {
-            bos.write(buffer, 0, readNum);
-        }
-        fis.close();
-        return bos.toByteArray();
-    }
-
     // Function to parse OCR.space API response (same as before)
     private static String parseOCRSpaceResult(String jsonResponse) {
         JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
@@ -512,84 +638,84 @@ public class CaptureToChatGPT extends JFrame {
     }
 
     // Function to send text to ChatGPT and receive a response (same as before)
-    public static String sendToChatGPT(String prompt, String apiKey) {
-        try {
-            URL url = new URL("https://api.openai.com/v1/chat/completions");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            // Set up the connection properties
-            conn.setDoOutput(true);
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-
-            // Create the JSON request body
-            String input = "{\n" +
-                    "  \"model\": \"gpt-3.5-turbo\",\n" +
-                    "  \"messages\": [\n" +
-                    "    {\n" +
-                    "      \"role\": \"user\",\n" +
-                    "      \"content\": \"" + prompt.replace("\"", "\\\"") + "\"\n" +
-                    "    }\n" +
-                    "  ]\n" +
-                    "}";
-
-            // Send the request
-            OutputStream os = conn.getOutputStream();
-            os.write(input.getBytes("UTF-8"));
-            os.flush();
-            os.close();
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode == 200) {
-                // Read the response
-                BufferedReader br = new BufferedReader(new InputStreamReader(
-                        (conn.getInputStream()), "UTF-8"));
-
-                StringBuilder response = new StringBuilder();
-                String output;
-
-                while ((output = br.readLine()) != null) {
-                    response.append(output);
-                }
-                br.close();
-
-                // Parse the assistant's reply from the JSON response
-                String assistantReply = parseAssistantReply(response.toString());
-                return assistantReply;
-
-            } else {
-                // Read the error response
-                InputStream errorStream = conn.getErrorStream();
-                if (errorStream != null) {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(errorStream, "UTF-8"));
-                    StringBuilder errorResponse = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        errorResponse.append(line);
-                    }
-                    br.close();
-                    if (log.isEnabled()) log.getLogger().info("Error Response: " + errorResponse.toString());
-                }
-                if (log.isEnabled()) log.getLogger().info("HTTP Error Code: " + responseCode);
-                return "Error: Unable to get response from ChatGPT.";
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "Error: Exception occurred while communicating with ChatGPT.";
-        }
-    }
+//    public static String sendToChatGPT(String prompt, String apiKey) {
+//        try {
+//            URL url = new URL("https://api.openai.com/v1/chat/completions");
+//            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//
+//            // Set up the connection properties
+//            conn.setDoOutput(true);
+//            conn.setRequestMethod("POST");
+//            conn.setRequestProperty("Content-Type", "application/json");
+//            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+//
+//            // Create the JSON request body
+//            String input = "{\n" +
+//                    "  \"model\": \"gpt-3.5-turbo\",\n" +
+//                    "  \"messages\": [\n" +
+//                    "    {\n" +
+//                    "      \"role\": \"user\",\n" +
+//                    "      \"content\": \"" + prompt.replace("\"", "\\\"") + "\"\n" +
+//                    "    }\n" +
+//                    "  ]\n" +
+//                    "}";
+//
+//            // Send the request
+//            OutputStream os = conn.getOutputStream();
+//            os.write(input.getBytes("UTF-8"));
+//            os.flush();
+//            os.close();
+//
+//            int responseCode = conn.getResponseCode();
+//            if (responseCode == 200) {
+//                // Read the response
+//                BufferedReader br = new BufferedReader(new InputStreamReader(
+//                        (conn.getInputStream()), "UTF-8"));
+//
+//                StringBuilder response = new StringBuilder();
+//                String output;
+//
+//                while ((output = br.readLine()) != null) {
+//                    response.append(output);
+//                }
+//                br.close();
+//
+//                // Parse the assistant's reply from the JSON response
+//                String assistantReply = parseAssistantReply(response.toString());
+//                return assistantReply;
+//
+//            } else {
+//                // Read the error response
+//                InputStream errorStream = conn.getErrorStream();
+//                if (errorStream != null) {
+//                    BufferedReader br = new BufferedReader(new InputStreamReader(errorStream, "UTF-8"));
+//                    StringBuilder errorResponse = new StringBuilder();
+//                    String line;
+//                    while ((line = br.readLine()) != null) {
+//                        errorResponse.append(line);
+//                    }
+//                    br.close();
+//                    if (log.isEnabled()) log.getLogger().info("Error Response: " + errorResponse.toString());
+//                }
+//                if (log.isEnabled()) log.getLogger().info("HTTP Error Code: " + responseCode);
+//                return "Error: Unable to get response from ChatGPT.";
+//            }
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return "Error: Exception occurred while communicating with ChatGPT.";
+//        }
+//    }
 
     // Function to parse the assistant's reply from the JSON response (same as before)
-    private static String parseAssistantReply(String jsonResponse) {
-        JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-        JsonArray choices = jsonObject.getAsJsonArray("choices");
-        JsonObject firstChoice = choices.get(0).getAsJsonObject();
-        JsonObject message = firstChoice.getAsJsonObject("message");
-        String content = message.get("content").getAsString();
-        return content.trim();
-    }
+//    private static String parseAssistantReply(String jsonResponse) {
+//        JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
+//        JsonArray choices = jsonObject.getAsJsonArray("choices");
+//        JsonObject firstChoice = choices.get(0).getAsJsonObject();
+//        JsonObject message = firstChoice.getAsJsonObject("message");
+//        String content = message.get("content").getAsString();
+//        return content.trim();
+//    }
 
     // Main method
     public static void main(String ...args) {
@@ -599,7 +725,10 @@ public class CaptureToChatGPT extends JFrame {
 
         boolean selectArea = params.booleanValue("cap", true);
         ocrApiKey = params.stringValue("ocr-key", true);
-        openAiApiKey = params.stringValue("gpt-key", true);
+        openAIApiKey = params.stringValue("gpt-key", true);
+        openAIApiURL = params.stringValue("gpt-url", true );
+        openAIModel = params.stringValue("gpt-model", true );
+
 
         if (selectArea) {
             try {
