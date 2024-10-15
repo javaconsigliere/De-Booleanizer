@@ -80,6 +80,7 @@ public class CaptureToChatGPT extends JFrame {
         // TextAreas
         resultTextArea = new JTextArea();
         promptTextArea = new JTextArea();
+        promptTextArea.setText("Analyse the image and respond with solution only");
 
         // Make TextAreas wrap lines and scrollable
         resultTextArea.setLineWrap(true);
@@ -280,19 +281,20 @@ public class CaptureToChatGPT extends JFrame {
             if(rd.getStatus() == HTTPStatusCode.OK.CODE)
             {
                 response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
-                System.out.println(response);
+                if(log.isEnabled()) log.getLogger().info("" + response);
                 NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
 
-                System.out.println(choices);
+                if(log.isEnabled()) log.getLogger().info("" + choices);
                 NVGenericMap firstChoice = choices.getValue().get(0);
-                System.out.println(firstChoice);
+                if(log.isEnabled()) log.getLogger().info("" + firstChoice);
                 NVGenericMap message = (NVGenericMap) firstChoice.get("message");
 
-                System.out.println("Content\n" + message.getValue("content"));
+                if(log.isEnabled()) log.getLogger().info("Content\n" + message.getValue("content"));
 
                 SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
             }
+            log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
         }
 
 

@@ -49,7 +49,8 @@ public class ChatGPTUtil
         content.add(new NVGenericMap().build("type", "image_url")
                 .build(new NVGenericMap("image_url")
                         .build("url","data:image/" + imageType + ";base64,{" + imageBase64+ "}")));
-        request.build(new NVInt("max_tokens", maxTokens));
+        if (maxTokens > 200)
+            request.build(new NVInt("max_tokens", maxTokens));
 
         return request;
     }
