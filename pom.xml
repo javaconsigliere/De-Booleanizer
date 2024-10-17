@@ -194,9 +194,9 @@
 
 
     <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>javax.servlet-api</artifactId>
-      <version>${javax-servlet.version}</version>
+      <groupId>io.xlogistx</groupId>
+      <artifactId>xlogistx-http</artifactId>
+      <version>${xlogistx.version}</version>
     </dependency>
 
     <dependency>
