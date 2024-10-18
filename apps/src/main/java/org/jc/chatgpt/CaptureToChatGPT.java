@@ -23,6 +23,8 @@ import org.zoxweb.shared.util.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -45,11 +47,13 @@ public class CaptureToChatGPT extends JFrame {
     private JTextArea promptTextArea;
     private JTextArea resultTextArea;
     private JTextField imageFileName;
+    private JCheckBox autoCopyToClipboardCB;
 
     private OCRSelection ocrSelection;
     private BufferedImage lastCapture;
 
     private LedWidget activityLed;
+    private Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 
     private ReentrantLock lock = new ReentrantLock();
 
@@ -146,12 +150,14 @@ public class CaptureToChatGPT extends JFrame {
         clearPromptButton = new JButton("Clear Prompt");
         selectButton = new JButton("Select");
         ocrSelection = new OCRSelection(this);
+        autoCopyToClipboardCB  = new JCheckBox("AutoCopy");
         ocrSelection.selectionBox.setName("OCR");
 
         refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
         imageFileName = new JTextField(20);
         //controlPanel.add(selectButton);
         controlPanel.add(manualButton);
+        controlPanel.add(autoCopyToClipboardCB);
         controlPanel.add(activityLed);
         controlPanel.add(startButton);
         controlPanel.add(stopButton);
@@ -322,6 +328,10 @@ public class CaptureToChatGPT extends JFrame {
                     if (log.isEnabled()) log.getLogger().info("Content\n" + message.getValue("content"));
 
                     SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
+
+                    if(autoCopyToClipboardCB.isSelected())
+                        copyToClipboard(message.getValue("content"));
+
                 }
                 log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
             }
@@ -337,6 +347,18 @@ public class CaptureToChatGPT extends JFrame {
         return response;
     }
 
+
+
+    public void copyToClipboard(String text) {
+        // Create a StringSelection with the desired text
+        StringSelection stringSelection = new StringSelection(text);
+
+        // Get the system clipboard
+
+
+        // Set the clipboard contents to the StringSelection
+        clipboard.setContents(stringSelection, null); // null for owner means no owner
+    }
 
     private void startProcessing() {
         if(future != null)
