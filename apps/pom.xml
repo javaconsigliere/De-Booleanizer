@@ -72,6 +72,10 @@
             <groupId>io.xlogistx</groupId>
             <artifactId>xlogistx-http</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.xlogistx</groupId>
+            <artifactId>xlogistx-widget</artifactId>
+        </dependency>
 
     </dependencies>
 

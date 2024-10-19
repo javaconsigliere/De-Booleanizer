@@ -1,22 +1,20 @@
 package org.jc.imaging.ocr;
 
 
+import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.jc.imaging.SelectionWindow;
 import org.zoxweb.shared.util.SharedUtil;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 
 public class OCRUtil {
-    private final Lock lock = new ReentrantLock();
+    private static final Lock lock = new ReentrantLock();
     private final Tesseract tesseract = new Tesseract();
     public static final OCRUtil SINGLETON  = new OCRUtil();
     private String lastResult;
@@ -27,78 +25,78 @@ public class OCRUtil {
 
     }
 
-    public boolean compareImages(BufferedImage imgA, BufferedImage imgB) {
-        // Check if dimensions are the same
-        if (imgA == null || imgB == null ||
-                imgA.getWidth() != imgB.getWidth() ||
-                imgA.getHeight() != imgB.getHeight()) {
-            return false;
-        }
-
-        int width = imgA.getWidth();
-        int height = imgA.getHeight();
-
-        // Compare pixel by pixel
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                // Get the RGB values of the pixels
-                int pixelA = imgA.getRGB(x, y);
-                int pixelB = imgB.getRGB(x, y);
-
-                if (pixelA != pixelB) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-
-    public BufferedImage captureSelectedArea(Rectangle area) throws AWTException
-    {
-        Robot robot = new Robot();
-        return robot.createScreenCapture(area);
-    }
-
-    public  Rectangle captureSelectedArea()
-            throws AWTException, InterruptedException
-    {
-
-
-
-
-        Condition cond = lock.newCondition();
-        SelectionWindow selectionWindow = new SelectionWindow(lock, cond);
-        selectionWindow.setVisible(true);
-        selectionWindow.toFront();
-
-
-        try
-        {
-            lock.lock();
-            cond.await();
-        }
-        finally
-        {
-            lock.unlock();
-        }
-
-
-
-
-//        int counter = 0;
-//        // Wait until the user has made a selection
-//        while (!selectionWindow.isSelectionMade() && counter < 50) {
-//            //counter++;
-//            //System.out.println("Sleeping: " + counter);
-//            Thread.sleep(100);
+//    public static boolean compareImages(BufferedImage imgA, BufferedImage imgB) {
+//        // Check if dimensions are the same
+//        if (imgA == null || imgB == null ||
+//                imgA.getWidth() != imgB.getWidth() ||
+//                imgA.getHeight() != imgB.getHeight()) {
+//            return false;
 //        }
+//
+//        int width = imgA.getWidth();
+//        int height = imgA.getHeight();
+//
+//        // Compare pixel by pixel
+//        for (int y = 0; y < height; y++) {
+//            for (int x = 0; x < width; x++) {
+//                // Get the RGB values of the pixels
+//                int pixelA = imgA.getRGB(x, y);
+//                int pixelB = imgB.getRGB(x, y);
+//
+//                if (pixelA != pixelB) {
+//                    return false;
+//                }
+//            }
+//        }
+//        return true;
+//    }
 
-        selectionWindow.dispose();
-
-        // Get the selected area
-        return selectionWindow.getSelectedArea();
-    }
+//
+//    public static BufferedImage captureSelectedArea(Rectangle area) throws AWTException
+//    {
+//        Robot robot = new Robot();
+//        return robot.createScreenCapture(area);
+//    }
+//
+//    public  static Rectangle captureSelectedArea()
+//            throws AWTException, InterruptedException
+//    {
+//
+//
+//
+//
+//        Condition cond = lock.newCondition();
+//        SelectionWindow selectionWindow = new SelectionWindow(lock, cond);
+//        selectionWindow.setVisible(true);
+//        selectionWindow.toFront();
+//
+//
+//        try
+//        {
+//            lock.lock();
+//            cond.await();
+//        }
+//        finally
+//        {
+//            lock.unlock();
+//        }
+//
+//
+//
+//
+////        int counter = 0;
+////        // Wait until the user has made a selection
+////        while (!selectionWindow.isSelectionMade() && counter < 50) {
+////            //counter++;
+////            //System.out.println("Sleeping: " + counter);
+////            Thread.sleep(100);
+////        }
+//
+//        selectionWindow.dispose();
+//
+//        // Get the selected area
+//        return selectionWindow.getSelectedArea();
+//    }
 
 
 
@@ -117,7 +115,7 @@ public class OCRUtil {
         {
             // compare the 2 images
 
-            boolean result = compareImages(image, oldImage);
+            boolean result = WidgetUtil.compareImages(image, oldImage);
             if(result )
                 return lastResult;
         }

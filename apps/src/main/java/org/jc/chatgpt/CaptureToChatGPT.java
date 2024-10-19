@@ -5,8 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
+import io.xlogistx.widget.LedWidget;
+import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
-import org.jc.imaging.LedWidget;
 import org.jc.imaging.ocr.OCRSelection;
 import org.jc.imaging.ocr.OCRUtil;
 import org.zoxweb.server.http.HTTPCall;
@@ -23,8 +24,6 @@ import org.zoxweb.shared.util.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -53,7 +52,7 @@ public class CaptureToChatGPT extends JFrame {
     private BufferedImage lastCapture;
 
     private LedWidget activityLed;
-    private Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+
 
     private ReentrantLock lock = new ReentrantLock();
 
@@ -142,8 +141,10 @@ public class CaptureToChatGPT extends JFrame {
     private void initComponents() {
         // Panel for controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        activityLed = new LedWidget(30, 30, Color.GREEN, Color.RED);
-        activityLed.setState(true);
+        activityLed = new LedWidget(30, 30, Color.BLACK);
+        activityLed.mapColors(Const.Bool.ON, Color.GREEN)
+                        .mapColors(Const.Bool.OFF, Color.RED);
+        activityLed.setStatus(Const.Bool.ON);
         manualButton = new JButton("Manual");
         startButton = new JButton("Start");
         stopButton = new JButton("Stop");
@@ -171,32 +172,7 @@ public class CaptureToChatGPT extends JFrame {
         controlPanel.add(new JLabel("Filename"));
         controlPanel.add(imageFileName);
 
-        // Text areas for OCR text and result
-//        promptTextArea = new JTextArea(10, 40);
-//        resultTextArea = new JTextArea(10, 40);
-//
-//        JScrollPane ocrScrollPane = new JScrollPane(promptTextArea);
-//        JScrollPane resultScrollPane = new JScrollPane(resultTextArea);
-//
-//        promptTextArea.setLineWrap(true);
-//        promptTextArea.setWrapStyleWord(true);
-//        resultTextArea.setLineWrap(true);
-//        resultTextArea.setWrapStyleWord(true);
 
-        // Panel for text areas
-//        JPanel textPanel = new JPanel(new GridLayout(2, 1));
-//        textPanel.add(new JLabel("OCR Text:"));
-//        textPanel.add(ocrScrollPane);
-//        textPanel.add(new JLabel("ChatGPT Response:"));
-//        textPanel.add(resultScrollPane);
-
-
-//        JPanel textPanel = new JPanel();
-//        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
-//        textPanel.add(new JLabel("Prompt Text:"));
-//        textPanel.add(ocrScrollPane);
-//        textPanel.add(new JLabel("ChatGPT Response:"));
-//        textPanel.add(resultScrollPane);
 
 
         // Add panels to the frame
@@ -258,15 +234,15 @@ public class CaptureToChatGPT extends JFrame {
         NVGenericMap response = null;
         try {
             lock.lock();
-            SwingUtilities.invokeLater(() -> activityLed.setState(false));
+            SwingUtilities.invokeLater(() -> activityLed.setStatus(Const.Bool.OFF));
             manualButton.setEnabled(false);
             String prompt = null;
             // Capture the selected screen area
-            BufferedImage image = OCRUtil.SINGLETON.captureSelectedArea(selectedArea);
+            BufferedImage image = WidgetUtil.captureSelectedArea(selectedArea);
 
 
             rc.start();
-            if (OCRUtil.SINGLETON.compareImages(image, lastCapture)) {
+            if (WidgetUtil.compareImages(image, lastCapture)) {
                 lastCapture = image;
                 rc.stop();
                 if (log.isEnabled())
@@ -330,14 +306,14 @@ public class CaptureToChatGPT extends JFrame {
                     SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
 
                     if(autoCopyToClipboardCB.isSelected())
-                        copyToClipboard(message.getValue("content"));
+                        WidgetUtil.copyToClipboard(message.getValue("content"));
 
                 }
                 log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
             }
         }
         finally {
-            SwingUtilities.invokeLater(()-> activityLed.setState(true));
+            SwingUtilities.invokeLater(()-> activityLed.setStatus(Const.Bool.ON));
             manualButton.setEnabled(true);
             lock.unlock();
         }
@@ -349,16 +325,7 @@ public class CaptureToChatGPT extends JFrame {
 
 
 
-    public void copyToClipboard(String text) {
-        // Create a StringSelection with the desired text
-        StringSelection stringSelection = new StringSelection(text);
 
-        // Get the system clipboard
-
-
-        // Set the clipboard contents to the StringSelection
-        clipboard.setContents(stringSelection, null); // null for owner means no owner
-    }
 
     private void startProcessing() {
         if(future != null)
@@ -494,7 +461,7 @@ public class CaptureToChatGPT extends JFrame {
     {
         this.setVisible(false);
         try {
-            selectedArea = OCRUtil.SINGLETON.captureSelectedArea();
+            selectedArea = WidgetUtil.captureSelectedArea();
             if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
         } catch (Exception e) {
            e.printStackTrace();
@@ -507,96 +474,6 @@ public class CaptureToChatGPT extends JFrame {
 
 
 
-    // Function to capture screen selection
-//    private static Rectangle captureScreenSelection() throws AWTException, InterruptedException {
-//        // Create a full-screen window for selection
-//        SelectionWindow selectionWindow = new SelectionWindow();
-//        selectionWindow.setVisible(true);
-//        selectionWindow.toFront();
-//
-//        int counter = 0;
-//        // Wait until the user has made a selection
-//        while (!selectionWindow.isSelectionMade() && counter < 50) {
-//            //counter++;
-//            //if (log.isEnabled()) log.getLogger().info("Sleeping: " + counter);
-//            Thread.sleep(100);
-//        }
-//
-//        selectionWindow.dispose();
-//
-//        // Get the selected area
-//        return selectionWindow.getSelectedArea();
-//    }
-
-    // Custom window for rectangle selection (same as before)
-//    static class RectangleSelectionWindow extends JWindow {
-//        private Point startPoint;
-//        private Point endPoint;
-//        private Rectangle selectionBounds;
-//        private boolean selectionMade = false;
-
-//        public RectangleSelectionWindow() {
-//            setAlwaysOnTop(true);
-//            if (log.isEnabled()) log.getLogger().info(Toolkit.getDefaultToolkit().getScreenSize());
-//            setSize(Toolkit.getDefaultToolkit().getScreenSize());
-//            setBackground(new Color(0, 0, 0, 50)); // Semi-transparent background
-//
-//            // Mouse listeners
-//            addMouseListener(new MouseAdapter() {
-//                @Override
-//                public void mousePressed(MouseEvent e) {
-//
-//                    startPoint = e.getPoint();
-//                    endPoint = startPoint;
-//                    if (log.isEnabled()) log.getLogger().info("mousePreset: " + startPoint);
-//                    repaint();
-//                }
-//
-//                @Override
-//                public void mouseReleased(MouseEvent e) {
-//                    endPoint = e.getPoint();
-//                    selectionBounds = getSelectionRectangle();
-//                    if (log.isEnabled()) log.getLogger().info("mouseReleased: " + endPoint);
-//                    selectionMade = true;
-//                }
-//            });
-//
-//            addMouseMotionListener(new MouseMotionAdapter() {
-//                @Override
-//                public void mouseDragged(MouseEvent e) {
-//                    endPoint = e.getPoint();
-//                    repaint();
-//                }
-//            });
-//        }
-//
-//        @Override
-//        public void paint(Graphics g) {
-//            super.paint(g);
-//            if (startPoint != null && endPoint != null) {
-//                Graphics2D g2d = (Graphics2D) g;
-//                g2d.setColor(Color.RED);
-//                Rectangle rect = getSelectionRectangle();
-//                g2d.draw(rect);
-//            }
-//        }
-//
-//        private Rectangle getSelectionRectangle() {
-//            int x = Math.min(startPoint.x, endPoint.x);
-//            int y = Math.min(startPoint.y, endPoint.y);
-//            int width = Math.abs(startPoint.x - endPoint.x);
-//            int height = Math.abs(startPoint.y - endPoint.y);
-//            return new Rectangle(x, y, width, height);
-//        }
-//
-//        public Rectangle getSelectionBounds() {
-//            return selectionBounds;
-//        }
-//
-//        public boolean isSelectionMade() {
-//            return selectionMade;
-//        }
-//    }
 
     // Function to perform OCR using OCR.space API (same as before)
     public static String performOCRWithOCRSpace(String imageFormat, BufferedImage image, String apiKey) {
@@ -774,7 +651,7 @@ public class CaptureToChatGPT extends JFrame {
 
         if (selectArea) {
             try {
-                selectedArea = OCRUtil.SINGLETON.captureSelectedArea();
+                selectedArea = WidgetUtil.captureSelectedArea();
                 if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
             } catch (AWTException e) {
                 throw new RuntimeException(e);
