@@ -18,6 +18,7 @@ import org.zoxweb.server.task.TaskUtil;
 import org.zoxweb.server.util.GSONUtil;
 import org.zoxweb.shared.annotation.EndPointProp;
 import org.zoxweb.shared.annotation.MappedProp;
+import org.zoxweb.shared.filters.StringFilter;
 import org.zoxweb.shared.http.*;
 import org.zoxweb.shared.util.*;
 
@@ -43,7 +44,7 @@ public class CaptureToChatGPT extends JFrame {
     private JButton selectButton;
     private JButton manualButton;
     private JTextField refreshRateField;
-    private JTextArea promptTextArea;
+    private FilterPromptPanel filterPromptPanel;
     private JTextArea resultTextArea;
     private JTextField imageFileName;
     private JCheckBox autoCopyToClipboardCB;
@@ -90,18 +91,18 @@ public class CaptureToChatGPT extends JFrame {
 
         // TextAreas
         resultTextArea = new JTextArea();
-        promptTextArea = new JTextArea();
-        promptTextArea.setText("Analyse the image and respond with solution only");
+        filterPromptPanel = new FilterPromptPanel();
+        filterPromptPanel.setPromptInputText("Analyse the image and respond with solution only");
 
         // Make TextAreas wrap lines and scrollable
         resultTextArea.setLineWrap(true);
         resultTextArea.setWrapStyleWord(true);
 
-        promptTextArea.setLineWrap(true);
-        promptTextArea.setWrapStyleWord(true);
+//        promptTextArea.setLineWrap(true);
+//        promptTextArea.setWrapStyleWord(true);
 
         JScrollPane resultScrollPane = new JScrollPane(resultTextArea);
-        JScrollPane promptScrollPane = new JScrollPane(promptTextArea);
+        JScrollPane promptScrollPane = new JScrollPane(filterPromptPanel);
 
         // Set preferred sizes for initial appearance
         resultScrollPane.setPreferredSize(new Dimension(250, 150));
@@ -142,8 +143,8 @@ public class CaptureToChatGPT extends JFrame {
         // Panel for controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         activityLed = new LedWidget(30, 30, Color.BLACK);
-        activityLed.mapColors(Const.Bool.ON, Color.GREEN)
-                        .mapColors(Const.Bool.OFF, Color.RED);
+        activityLed.mapColor(Const.Bool.ON, Color.GREEN)
+                        .mapColor(Const.Bool.OFF, Color.RED);
         activityLed.setStatus(Const.Bool.ON);
         manualButton = new JButton("Manual");
         startButton = new JButton("Start");
@@ -198,7 +199,7 @@ public class CaptureToChatGPT extends JFrame {
                 ex.printStackTrace();
             }
         });
-        clearPromptButton.addActionListener(e -> promptTextArea.setText(""));
+        clearPromptButton.addActionListener(e -> filterPromptPanel.setPromptInputText(""));
 
 
 //        startButton.addMouseListener(new MouseAdapter() {
@@ -232,6 +233,22 @@ public class CaptureToChatGPT extends JFrame {
     {
         NVGenericMap request = null;
         NVGenericMap response = null;
+        StringFilter sf = null;
+        {
+            try
+            {
+                if(SUS.isNotEmpty(filterPromptPanel.getFilterInputText()))
+                {
+                    NVGenericMap config = GSONUtil.fromJSONDefault(filterPromptPanel.getFilterInputText(), NVGenericMap.class);
+                    sf = new StringFilter("toto", config);
+                }
+
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sf = null;
+            }
+        }
         try {
             lock.lock();
             SwingUtilities.invokeLater(() -> activityLed.setStatus(Const.Bool.OFF));
@@ -276,9 +293,9 @@ public class CaptureToChatGPT extends JFrame {
                 }
                 prompt = text;
                 String textToDisplay = prompt;
-                SwingUtilities.invokeLater(() -> promptTextArea.setText(textToDisplay));
+                SwingUtilities.invokeLater(() -> filterPromptPanel.setPromptInputText(textToDisplay));
             } else {
-                prompt = promptTextArea.getText();
+                prompt = filterPromptPanel.getPromptInputText();
             }
 
 
@@ -305,8 +322,14 @@ public class CaptureToChatGPT extends JFrame {
 
                     SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
 
-                    if(autoCopyToClipboardCB.isSelected())
-                        WidgetUtil.copyToClipboard(message.getValue("content"));
+                    if(autoCopyToClipboardCB.isSelected()) {
+                        String content = message.getValue("content");
+                        if(sf != null)
+                        {
+                            content = sf.decode(content);
+                        }
+                        WidgetUtil.copyToClipboard(content);
+                    }
 
                 }
                 log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
@@ -555,141 +578,82 @@ public class CaptureToChatGPT extends JFrame {
         return "";
     }
 
-    // Function to send text to ChatGPT and receive a response (same as before)
-//    public static String sendToChatGPT(String prompt, String apiKey) {
-//        try {
-//            URL url = new URL("https://api.openai.com/v1/chat/completions");
-//            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-//
-//            // Set up the connection properties
-//            conn.setDoOutput(true);
-//            conn.setRequestMethod("POST");
-//            conn.setRequestProperty("Content-Type", "application/json");
-//            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-//
-//            // Create the JSON request body
-//            String input = "{\n" +
-//                    "  \"model\": \"gpt-3.5-turbo\",\n" +
-//                    "  \"messages\": [\n" +
-//                    "    {\n" +
-//                    "      \"role\": \"user\",\n" +
-//                    "      \"content\": \"" + prompt.replace("\"", "\\\"") + "\"\n" +
-//                    "    }\n" +
-//                    "  ]\n" +
-//                    "}";
-//
-//            // Send the request
-//            OutputStream os = conn.getOutputStream();
-//            os.write(input.getBytes("UTF-8"));
-//            os.flush();
-//            os.close();
-//
-//            int responseCode = conn.getResponseCode();
-//            if (responseCode == 200) {
-//                // Read the response
-//                BufferedReader br = new BufferedReader(new InputStreamReader(
-//                        (conn.getInputStream()), "UTF-8"));
-//
-//                StringBuilder response = new StringBuilder();
-//                String output;
-//
-//                while ((output = br.readLine()) != null) {
-//                    response.append(output);
-//                }
-//                br.close();
-//
-//                // Parse the assistant's reply from the JSON response
-//                String assistantReply = parseAssistantReply(response.toString());
-//                return assistantReply;
-//
-//            } else {
-//                // Read the error response
-//                InputStream errorStream = conn.getErrorStream();
-//                if (errorStream != null) {
-//                    BufferedReader br = new BufferedReader(new InputStreamReader(errorStream, "UTF-8"));
-//                    StringBuilder errorResponse = new StringBuilder();
-//                    String line;
-//                    while ((line = br.readLine()) != null) {
-//                        errorResponse.append(line);
-//                    }
-//                    br.close();
-//                    if (log.isEnabled()) log.getLogger().info("Error Response: " + errorResponse.toString());
-//                }
-//                if (log.isEnabled()) log.getLogger().info("HTTP Error Code: " + responseCode);
-//                return "Error: Unable to get response from ChatGPT.";
-//            }
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return "Error: Exception occurred while communicating with ChatGPT.";
-//        }
-//    }
-
-    // Function to parse the assistant's reply from the JSON response (same as before)
-//    private static String parseAssistantReply(String jsonResponse) {
-//        JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-//        JsonArray choices = jsonObject.getAsJsonArray("choices");
-//        JsonObject firstChoice = choices.get(0).getAsJsonObject();
-//        JsonObject message = firstChoice.getAsJsonObject("message");
-//        String content = message.get("content").getAsString();
-//        return content.trim();
-//    }
+  
 
     // Main method
     public static void main(String ...args) {
 
-        int index = 0;
-        ParamUtil.ParamMap params = ParamUtil.parse("=", args);
+        try {
+            ParamUtil.ParamMap params = ParamUtil.parse("=", args);
 
-        boolean selectArea = params.booleanValue("cap", true);
-        ocrApiKey = params.stringValue("ocr-key", true);
-        openAIApiKey = params.stringValue("gpt-key", true);
-        openAIApiURL = params.stringValue("gpt-url", true );
-        openAIModel = params.stringValue("gpt-model", true );
-        String webServerConfig = params.stringValue("web-config", true);
-
-
-        if (selectArea) {
-            try {
-                selectedArea = WidgetUtil.captureSelectedArea();
-                if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
-            } catch (AWTException e) {
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            boolean selectArea = params.booleanValue("cap", true);
+            ocrApiKey = params.stringValue("ocr-key", true);
+            openAIApiKey = params.stringValue("gpt-key", true);
+            openAIApiURL = params.stringValue("gpt-url", true);
+            openAIModel = params.stringValue("gpt-model", true);
+            String jsonFilterFile = params.stringValue("json-filter", true);
+            String filterContent = null;
+            if (jsonFilterFile != null) {
+                try {
+                    filterContent = IOUtil.inputStreamToString(IOUtil.locateFile(jsonFilterFile));
+                    log.getLogger().info("Filter-Content\n" + filterContent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+            String webServerConfig = params.stringValue("web-config", true);
+
+
+            if (selectArea) {
+                try {
+                    selectedArea = WidgetUtil.captureSelectedArea();
+                    if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
+                } catch (AWTException e) {
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+
+            CaptureToChatGPT app = null;
+            if (webServerConfig != null) {
+                try {
+
+                    NIOHTTPServerCreator httpServerCreator = new NIOHTTPServerCreator();
+                    File file = IOUtil.locateFile(webServerConfig);
+                    HTTPServerConfig hsc = GSONUtil.fromJSON(IOUtil.inputStreamToString(file), HTTPServerConfig.class);
+                    if (log.isEnabled()) log.getLogger().info("" + hsc);
+                    if (log.isEnabled()) log.getLogger().info("" + hsc.getConnectionConfigs());
+                    httpServerCreator.setAppConfig(hsc);
+                    NIOHTTPServer ws = httpServerCreator.createApp();
+                    app = ws.getEndPointsManager().lookupBean("chat-gpt");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+
+            if (app == null)
+                app = new CaptureToChatGPT();
+
+            // for java lambda compliance
+            CaptureToChatGPT appConst = app;
+            String filterContentConst = filterContent;
+            //-----------------------------------------
+
+            SwingUtilities.invokeLater(() -> {
+                appConst.initComponents();
+                if (SUS.isNotEmpty(filterContentConst)) {
+                    appConst.filterPromptPanel.setFilterInputText(filterContentConst);
+                }
+                appConst.setVisible(true);
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            System.err.println("Usage: cap=[on/off] gpt-key=[oai-api-key] gpt-url=[vision-url] gpt-model=[oai-model] json-filter=[data-filter-file]");
         }
-
-
-        CaptureToChatGPT app = null;
-        if (webServerConfig!=null)
-        {
-            try
-            {
-
-                NIOHTTPServerCreator httpServerCreator = new NIOHTTPServerCreator();
-                File file = IOUtil.locateFile(webServerConfig);
-                HTTPServerConfig hsc = GSONUtil.fromJSON(IOUtil.inputStreamToString(file), HTTPServerConfig.class);
-                if(log.isEnabled()) log.getLogger().info("" + hsc);
-                if(log.isEnabled()) log.getLogger().info("" + hsc.getConnectionConfigs());
-                httpServerCreator.setAppConfig(hsc);
-                NIOHTTPServer ws = httpServerCreator.createApp();
-                app = ws.getEndPointsManager().lookupBean("chat-gpt");
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-
-        if (app == null)
-            app = new CaptureToChatGPT();
-        CaptureToChatGPT guiGPT = app;
-        SwingUtilities.invokeLater(() -> {
-            guiGPT.initComponents();
-
-            guiGPT.setVisible(true);
-        });
     }
 }
