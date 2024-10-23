@@ -143,8 +143,8 @@ public class CaptureToChatGPT extends JFrame {
         // Panel for controls
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         activityLed = new LedWidget(30, 30, Color.BLACK);
-        activityLed.mapColor(Const.Bool.ON, Color.GREEN)
-                        .mapColor(Const.Bool.OFF, Color.RED);
+        activityLed.mapStatus(Const.Bool.ON, Color.GREEN)
+                        .mapStatus(Const.Bool.OFF, Color.RED);
         activityLed.setStatus(Const.Bool.ON);
         manualButton = new JButton("Manual");
         startButton = new JButton("Start");
