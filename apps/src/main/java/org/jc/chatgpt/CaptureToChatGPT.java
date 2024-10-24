@@ -34,6 +34,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 
+
+
 @MappedProp(name = "chat-gpt", id = "chat-gpt-capture")
 public class CaptureToChatGPT extends JFrame {
 
@@ -324,11 +326,12 @@ public class CaptureToChatGPT extends JFrame {
 
                     if(autoCopyToClipboardCB.isSelected()) {
                         String content = message.getValue("content");
+                        String toClipboard = null;
                         if(sf != null)
                         {
-                            content = sf.decode(content);
+                            toClipboard = sf.decode(content);
                         }
-                        WidgetUtil.copyToClipboard(content);
+                        WidgetUtil.copyToClipboard(SUS.isNotEmpty(toClipboard) ?  toClipboard : content);
                     }
 
                 }
