@@ -185,6 +185,7 @@
       <artifactId>gson</artifactId>
       <version>${gson.version}</version>
     </dependency>
+
 	
     <dependency>
       <groupId>javax.websocket</groupId>
@@ -205,12 +206,12 @@
           <version>${xlogistx.version}</version>
       </dependency>
 
-    <dependency>
+    <!--<dependency>
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
       <version>${jsoup.version}</version>
     </dependency>
-	
+	-->
     <dependency>
       <groupId>commons-fileupload</groupId>
       <artifactId>commons-fileupload</artifactId>

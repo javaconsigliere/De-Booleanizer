@@ -27,11 +27,11 @@
 
 
     <dependencies>
-        <dependency>
+        <!--<dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>RELEASE</version>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.zoxweb</groupId>
             <artifactId>zoxweb-core</artifactId>
@@ -50,12 +50,6 @@
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-
 
         <dependency>
             <groupId>net.java.dev.jna</groupId>

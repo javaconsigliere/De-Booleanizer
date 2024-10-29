@@ -60,7 +60,11 @@ public class ChatGPTUtil
         HTTPMessageConfigInterface hmci = HTTPMessageConfig.createAndInit(url, null, httpMethod);
         hmci.setContentType(HTTPMediaType.APPLICATION_JSON, HTTPConst.CHARSET_UTF_8);
         hmci.setAccept(HTTPMediaType.APPLICATION_JSON, HTTPConst.CHARSET_UTF_8);
-
+        //hmci.getHeaders().build(HTTPHeader.CONNECTION.getName(), "keep-alive");
+//        hmci.setContentType(HTTPMediaType.APPLICATION_JSON);
+//        hmci.setAccept(HTTPMediaType.APPLICATION_JSON);
+        //hmci.getHeaders().build("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
+        //hmci.setSecureCheckEnabled(false);
         hmci.setAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, appKey));
         hmci.setContent(GSONUtil.toJSONDefault(payload));
 

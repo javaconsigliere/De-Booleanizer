@@ -10,7 +10,7 @@ import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
 import org.jc.imaging.ocr.OCRSelection;
 import org.jc.imaging.ocr.OCRUtil;
-import org.zoxweb.server.http.HTTPCall;
+import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
 import org.zoxweb.server.io.UByteArrayOutputStream;
 import org.zoxweb.server.logging.LogWrapper;
@@ -49,6 +49,7 @@ public class CaptureToChatGPT extends JFrame {
     private FilterPromptPanel filterPromptPanel;
     private JTextArea resultTextArea;
     private JTextField imageFileName;
+    private JTextField modelName;
     private JCheckBox autoCopyToClipboardCB;
 
     private OCRSelection ocrSelection;
@@ -159,6 +160,8 @@ public class CaptureToChatGPT extends JFrame {
 
         refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
         imageFileName = new JTextField(20);
+        modelName = new JTextField(10);
+        modelName.setText(openAIModel);
         //controlPanel.add(selectButton);
         controlPanel.add(manualButton);
         controlPanel.add(autoCopyToClipboardCB);
@@ -174,6 +177,9 @@ public class CaptureToChatGPT extends JFrame {
 
         controlPanel.add(new JLabel("Filename"));
         controlPanel.add(imageFileName);
+        controlPanel.add(new JLabel("Model"));
+        controlPanel.add(modelName);
+
 
 
 
@@ -305,9 +311,9 @@ public class CaptureToChatGPT extends JFrame {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
-                request = ChatGPTUtil.toData(openAIModel, prompt, "png", 5000, baos);
+                request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
                 HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, openAIApiKey, request);
-                HTTPResponseData rd = HTTPCall.send(hmci);
+                HTTPResponseData rd = OkHTTPCall.send(hmci);
 
                 if (rd.getStatus() == HTTPStatusCode.OK.CODE) {
                     response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
