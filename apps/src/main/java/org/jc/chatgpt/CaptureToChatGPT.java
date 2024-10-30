@@ -307,7 +307,7 @@ public class CaptureToChatGPT extends JFrame {
             }
 
 
-            if (!SharedStringUtil.isEmpty(prompt)) {
+            if (SUS.isNotEmpty(prompt)) {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
