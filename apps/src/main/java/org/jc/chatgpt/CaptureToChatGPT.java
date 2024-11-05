@@ -8,6 +8,7 @@ import io.xlogistx.http.NIOHTTPServerCreator;
 import io.xlogistx.widget.LedWidget;
 import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
+import okhttp3.OkHttpClient;
 import org.jc.imaging.ocr.OCRSelection;
 import org.jc.imaging.ocr.OCRUtil;
 import org.zoxweb.server.http.OkHTTPCall;
@@ -15,6 +16,7 @@ import org.zoxweb.server.io.IOUtil;
 import org.zoxweb.server.io.UByteArrayOutputStream;
 import org.zoxweb.server.logging.LogWrapper;
 import org.zoxweb.server.task.TaskUtil;
+import org.zoxweb.server.util.DateUtil;
 import org.zoxweb.server.util.GSONUtil;
 import org.zoxweb.shared.annotation.EndPointProp;
 import org.zoxweb.shared.annotation.MappedProp;
@@ -29,6 +31,8 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.util.Date;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -48,7 +52,8 @@ public class CaptureToChatGPT extends JFrame {
     private JTextField refreshRateField;
     private FilterPromptPanel filterPromptPanel;
     private JTextArea resultTextArea;
-    private JTextField imageFileName;
+    private JFileChooser fileChooser;
+    private JButton fileChooserButton;
     private JTextField modelName;
     private JCheckBox autoCopyToClipboardCB;
 
@@ -59,6 +64,8 @@ public class CaptureToChatGPT extends JFrame {
 
 
     private ReentrantLock lock = new ReentrantLock();
+
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 40, true, 10, 20).build();
 
 
     static private Rectangle selectedArea;
@@ -159,7 +166,9 @@ public class CaptureToChatGPT extends JFrame {
         ocrSelection.selectionBox.setName("OCR");
 
         refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
-        imageFileName = new JTextField(20);
+        fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fileChooserButton = new JButton("Files");
         modelName = new JTextField(10);
         modelName.setText(openAIModel);
         //controlPanel.add(selectButton);
@@ -175,12 +184,12 @@ public class CaptureToChatGPT extends JFrame {
         controlPanel.add(new JLabel("OCR"));
         controlPanel.add(ocrSelection.selectionBox);
 
-        controlPanel.add(new JLabel("Filename"));
-        controlPanel.add(imageFileName);
+//        controlPanel.add(new JLabel("Filename"));
+        controlPanel.add(fileChooserButton);
         controlPanel.add(new JLabel("Model"));
         controlPanel.add(modelName);
 
-
+        fileChooserButton.addActionListener(e->fileChooser.showOpenDialog(this));
 
 
 
@@ -276,11 +285,17 @@ public class CaptureToChatGPT extends JFrame {
             } else {
                 lastCapture = image;
             }
-            String filename = SharedStringUtil.trimOrNull(imageFileName.getText());
-            if (filename != null) {
-                ImageIO.write(image, SharedStringUtil.valueAfterRightToken(filename, "."), new File(filename));
-                log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(filename, ".") +
-                        " filename: " + filename);
+            File chosenDir = fileChooser.getSelectedFile();
+            String baseFileName = null;
+
+            if (chosenDir != null) {
+                if(chosenDir.isDirectory()) {
+                    baseFileName = DateUtil.FILE_DATE_FORMAT.format(new Date());
+                    File file = new File(chosenDir, baseFileName+".png");
+                    ImageIO.write(image, "png", file);
+                    log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(file.getName(), ".") +
+                            " filename: " + file);
+                }
             }
 
             if (log.isEnabled())
@@ -313,7 +328,7 @@ public class CaptureToChatGPT extends JFrame {
                 // chat gpt API
                 request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
                 HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, openAIApiKey, request);
-                HTTPResponseData rd = OkHTTPCall.send(hmci);
+                HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
 
                 if (rd.getStatus() == HTTPStatusCode.OK.CODE) {
                     response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
@@ -337,7 +352,18 @@ public class CaptureToChatGPT extends JFrame {
                         {
                             toClipboard = sf.decode(content);
                         }
+                        else
+                            toClipboard = content;
+
                         WidgetUtil.copyToClipboard(SUS.isNotEmpty(toClipboard) ?  toClipboard : content);
+                        if(baseFileName != null)
+                        {
+                            File file = new File(chosenDir, baseFileName + "." + sf.getExtension());
+                            try(OutputStream os = Files.newOutputStream(file.toPath()))
+                            {
+                                os.write(toClipboard.getBytes());
+                            }
+                        }
                     }
 
                 }
@@ -379,91 +405,6 @@ public class CaptureToChatGPT extends JFrame {
             stopProcessing();
             return;
         }
-//        this.setEnabled(false);
-//        // Activate screen selection
-//        try {
-//            selectedArea = captureScreenSelection();
-//            if (selectedArea == null) {
-//                JOptionPane.showMessageDialog(this, "No area selected.", "Info", JOptionPane.INFORMATION_MESSAGE);
-//                stopProcessing();
-//                return;
-//            }
-//        } catch (Exception ex) {
-//            ex.printStackTrace();
-//            JOptionPane.showMessageDialog(this, "Error during screen selection.", "Error", JOptionPane.ERROR_MESSAGE);
-//            stopProcessing();
-//            return;
-//        }
-//
-//        this.setEnabled(true);
-        // Set up timer task
-//        timer = new Timer(refreshRate, e -> {
-//            new Thread(() -> {
-//                try {
-////                    // Capture the selected screen area
-////                    BufferedImage image = OCRUtil.SINGLETON.captureSelectedArea(selectedArea);
-////
-////
-////                    rc.start();
-////                    if (OCRUtil.SINGLETON.compareImages(image, lastCapture)) {
-////                        lastCapture = image;
-////                        rc.stop();
-////                        if (log.isEnabled()) log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
-////                        return;
-////                    } else {
-////                        lastCapture = image;
-////                    }
-////                    String filename = SharedStringUtil.trimOrNull(imageFileName.getText());
-////                    if(filename != null) {
-////                        ImageIO.write(image, SharedStringUtil.valueAfterRightToken(filename, "."), new File(filename));
-////                        log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(filename, ".") +
-////                                " filename: " + filename);
-////                    }
-////
-////                    if (log.isEnabled()) log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
-////                    String text = null;
-////
-////                    NVGenericMap selectionInfo = ocrSelection.getSelectionInfo();
-////                    if (selectionInfo != null)
-////                    {
-////                        switch (selectionInfo.getName())
-////                        {
-////                            case "local-ocr":
-////                                text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
-////                                break;
-////
-////                            case "remote-ocr":
-////                                // Perform OCR
-////                                text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
-////                                break;
-////                        }
-////                        String ocrText = text;
-////                        SwingUtilities.invokeLater(() -> promptTextArea.setText(ocrText));
-////                    }
-//                    processGPT();
-//
-////                    // Save image (optional)
-////                    ImageIO.write(image, "png", new File("screenshot.png"));
-////
-////                    // Perform OCR
-////                    ocrText = performOCRWithOCRSpace("screenshot.png", ocrApiKey);
-//
-//                    // Update OCR text area
-//
-//                    return;
-//                    // Send to ChatGPT
-////                    String response = sendToChatGPT(ocrText, openAiApiKey);
-////
-////                    // Update result text area
-////                    SwingUtilities.invokeLater(() -> resultTextArea.setText(response));
-//
-//                } catch (Exception ex) {
-//                    ex.printStackTrace();
-//                }
-//            }).start();
-//        });
-//        timer.setInitialDelay(0); // Start immediately
-//        timer.start();
 
         future = TaskUtil.defaultTaskScheduler().scheduleAtFixedRate(()->{try
         {

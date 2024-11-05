@@ -2,6 +2,7 @@
   "name": "java-between",
   "description": "Get text between prefix{}postfix",
   "type": "BETWEEN",
+  "extension" : "java",
   "prefix": "```java",
   "postfix": "```"
 }
