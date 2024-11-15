@@ -9,7 +9,6 @@ import io.xlogistx.widget.LedWidget;
 import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
-import org.jc.imaging.ocr.OCRSelection;
 import org.jc.imaging.ocr.OCRUtil;
 import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
@@ -57,7 +56,7 @@ public class CaptureToChatGPT extends JFrame {
     private JTextField modelName;
     private JCheckBox autoCopyToClipboardCB;
 
-    private OCRSelection ocrSelection;
+    private GPTSelection gptSelection;
     private BufferedImage lastCapture;
 
     private LedWidget activityLed;
@@ -75,7 +74,7 @@ public class CaptureToChatGPT extends JFrame {
 
     // API keys (replace with your actual keys)
     private static String ocrApiKey = null; // Replace with your OCR.space API key
-    private static String openAIApiKey = null; // Replace with your OpenAI API key
+    //private static String openAIApiKey = null; // Replace with your OpenAI API key
     private static String openAIApiURL = null;
     private static String openAIModel = null;
     private Future<?> future = null;
@@ -161,9 +160,9 @@ public class CaptureToChatGPT extends JFrame {
         stopButton = new JButton("Stop");
         clearPromptButton = new JButton("Clear Prompt");
         selectButton = new JButton("Select");
-        ocrSelection = new OCRSelection(this);
+        gptSelection = new GPTSelection(this);
         autoCopyToClipboardCB  = new JCheckBox("AutoCopy");
-        ocrSelection.selectionBox.setName("OCR");
+        gptSelection.selectionBox.setName("OCR");
 
         refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
         fileChooser = new JFileChooser();
@@ -182,7 +181,7 @@ public class CaptureToChatGPT extends JFrame {
         controlPanel.add(refreshRateField);
 
         controlPanel.add(new JLabel("OCR"));
-        controlPanel.add(ocrSelection.selectionBox);
+        controlPanel.add(gptSelection.selectionBox);
 
 //        controlPanel.add(new JLabel("Filename"));
         controlPanel.add(fileChooserButton);
@@ -302,7 +301,7 @@ public class CaptureToChatGPT extends JFrame {
                 log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
             String text = null;
 
-            NVGenericMap selectionInfo = ocrSelection.getSelectionInfo();
+            NVGenericMap selectionInfo = gptSelection.getSelectionInfo();
             if (selectionInfo != null) {
                 switch (selectionInfo.getName()) {
                     case "local-ocr":
@@ -327,7 +326,7 @@ public class CaptureToChatGPT extends JFrame {
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
                 request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
-                HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, openAIApiKey, request);
+                HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
                 HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
 
                 if (rd.getStatus() == HTTPStatusCode.OK.CODE) {
@@ -343,19 +342,19 @@ public class CaptureToChatGPT extends JFrame {
 
                     if (log.isEnabled()) log.getLogger().info("Content\n" + message.getValue("content"));
 
-                    SwingUtilities.invokeLater(() -> resultTextArea.setText(message.getValue("content")));
+                    SwingUtilities.invokeLater(() -> resultTextArea.setText("" + message.getValue("content")));
 
                     if(autoCopyToClipboardCB.isSelected()) {
-                        String content = message.getValue("content");
+                        Object content = message.getValue("content");
                         String toClipboard = null;
-                        if(sf != null)
+                        if(sf != null && content instanceof String)
                         {
-                            toClipboard = sf.decode(content);
+                            toClipboard = sf.decode((String) content);
                         }
-                        else
-                            toClipboard = content;
+                        else if (content instanceof String)
+                            toClipboard = (String) content;
 
-                        WidgetUtil.copyToClipboard(SUS.isNotEmpty(toClipboard) ?  toClipboard : content);
+                        WidgetUtil.copyToClipboard(SUS.isNotEmpty(toClipboard) ?  toClipboard : ""+content);
                         if(baseFileName != null)
                         {
                             File file = new File(chosenDir, baseFileName + "." + sf.getExtension());
@@ -538,7 +537,7 @@ public class CaptureToChatGPT extends JFrame {
 
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
-            openAIApiKey = params.stringValue("gpt-key", true);
+            String openAIApiKey = params.stringValue("gpt-key", true);
             openAIApiURL = params.stringValue("gpt-url", true);
             openAIModel = params.stringValue("gpt-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
@@ -587,6 +586,7 @@ public class CaptureToChatGPT extends JFrame {
             if (app == null)
                 app = new CaptureToChatGPT();
 
+
             // for java lambda compliance
             CaptureToChatGPT appConst = app;
             String filterContentConst = filterContent;
@@ -598,6 +598,8 @@ public class CaptureToChatGPT extends JFrame {
                     appConst.filterPromptPanel.setFilterInputText(filterContentConst);
                 }
                 appConst.setVisible(true);
+
+                appConst.gptSelection.setGPTAPIKey(openAIApiKey);
             });
 
         } catch (Exception e) {

@@ -1,4 +1,4 @@
-package org.jc.imaging.ocr;
+package org.jc.chatgpt;
 
 import org.zoxweb.shared.util.NVGenericMap;
 
@@ -7,22 +7,26 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class OCRSelection {
+public class GPTSelection {
 
     // Public selection box variable
     public JComboBox<String> selectionBox;
     private final JFrame mainFrame;
     private NVGenericMap selectionInfo = null;
 
+
+
+    private String gptAPIKey;
+
     // Constructor
-    public OCRSelection(JFrame mainFrame) {
+    public GPTSelection(JFrame mainFrame) {
         this.mainFrame = mainFrame;
         initializeComponents();
     }
 
     private void initializeComponents() {
         // Create the selection box with three entries
-        String[] options = { "No OCR", "Local OCR", "Remote OCR" };
+        String[] options = { "No OCR", "Local OCR", "Remote OCR", "GPT API Key" };
         selectionBox = new JComboBox<>(options);
 
         // Set default selection to "No OCR"
@@ -37,7 +41,10 @@ public class OCRSelection {
                     showLocalOCRDialog();
                 } else if ("Remote OCR".equals(selectedOption)) {
                     showRemoteOCRDialog();
-                } else {
+                } else if ("GPT API Key".equals(selectedOption)) {
+                    showGPTAPIKey();
+                }
+                else {
                     // No OCR selected, call internal selection parameters
                     setSelectionInfo(null);
                 }
@@ -202,6 +209,83 @@ public class OCRSelection {
         dialog.setVisible(true);
     }
 
+    private void showGPTAPIKey() {
+        // Create text field
+        JTextField apiKeyField = new JTextField(25);
+        apiKeyField.setText(getGPTAPIKey());
+
+
+        // Create buttons
+        JButton setButton = new JButton("Set");
+        JButton cancelButton = new JButton("Cancel");
+
+        // Create the dialog
+        JDialog dialog = new JDialog((Frame) null, "GPT-KEY", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        // Set up the layout
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // Add components to the panel
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("API-KEY:"), gbc);
+
+        gbc.gridx = 1;
+        panel.add(apiKeyField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+
+
+
+
+        // Buttons panel
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonsPanel.add(setButton);
+        buttonsPanel.add(cancelButton);
+
+        // Add action listeners for buttons
+        setButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Retrieve input value
+                String apiKey = apiKeyField.getText();
+                setGPTAPIKey(apiKey);
+
+                // Perform validation if necessary
+                // ...
+
+                // Call internal selection parameters
+
+                setSelectionInfo(new NVGenericMap("GPT-API-KEY").build("gpt-key", apiKey));
+
+                // Close the dialog
+                dialog.dispose();
+            }
+        });
+
+        cancelButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Reset selection to "No OCR"
+                selectionBox.setSelectedIndex(0);
+                dialog.dispose();
+            }
+        });
+
+        // Assemble the dialog
+        dialog.getContentPane().setLayout(new BorderLayout());
+        dialog.getContentPane().add(panel, BorderLayout.CENTER);
+        dialog.getContentPane().add(buttonsPanel, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setLocationRelativeTo(mainFrame);
+        dialog.setVisible(true);
+    }
+
     // Method representing the internal selection parameters call
     private void setSelectionInfo(NVGenericMap selection) {
         this.selectionInfo = selection;
@@ -223,7 +307,7 @@ public class OCRSelection {
         frame.setSize(200, 75);
 
         // Create an instance of OCRSelectionPanel
-        OCRSelection ocrSelectionPanel = new OCRSelection(frame);
+        GPTSelection ocrSelectionPanel = new GPTSelection(frame);
 
         // Add the panel to the frame
         frame.getContentPane().add(ocrSelectionPanel.selectionBox);
@@ -231,5 +315,13 @@ public class OCRSelection {
         // Display the frame
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    public String getGPTAPIKey() {
+        return gptAPIKey;
+    }
+
+    public void setGPTAPIKey(String gptAPIKey) {
+        this.gptAPIKey = gptAPIKey;
     }
 }
