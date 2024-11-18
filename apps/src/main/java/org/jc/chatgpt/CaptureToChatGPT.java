@@ -326,6 +326,7 @@ public class CaptureToChatGPT extends JFrame {
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
                 request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
+                System.out.println("API KEY " + gptSelection.getGPTAPIKey());
                 HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
                 HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
 
