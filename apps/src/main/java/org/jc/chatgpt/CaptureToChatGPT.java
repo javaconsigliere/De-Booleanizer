@@ -162,9 +162,9 @@ public class CaptureToChatGPT extends JFrame {
         selectButton = new JButton("Select");
         gptSelection = new GPTSelection(this);
         autoCopyToClipboardCB  = new JCheckBox("AutoCopy");
-        gptSelection.selectionBox.setName("OCR");
+        gptSelection.selectionBox.setName("CONF");
 
-        refreshRateField = new JTextField("5s", 5); // Default refresh rate is 5 seconds
+        refreshRateField = new JTextField("10s", 5); // Default refresh rate is 5 seconds
         fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         fileChooserButton = new JButton("Files");
@@ -180,7 +180,7 @@ public class CaptureToChatGPT extends JFrame {
         controlPanel.add(new JLabel("Refresh Rate (s):"));
         controlPanel.add(refreshRateField);
 
-        controlPanel.add(new JLabel("OCR"));
+        controlPanel.add(new JLabel("CONF"));
         controlPanel.add(gptSelection.selectionBox);
 
 //        controlPanel.add(new JLabel("Filename"));
@@ -312,6 +312,9 @@ public class CaptureToChatGPT extends JFrame {
                         // Perform OCR
                         text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
                         break;
+                    case "gpt-api-key":
+                        text = filterPromptPanel.getPromptInputText();
+                        break;
                 }
                 prompt = text;
                 String textToDisplay = prompt;
@@ -326,7 +329,7 @@ public class CaptureToChatGPT extends JFrame {
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
                 request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
-                System.out.println("API KEY " + gptSelection.getGPTAPIKey());
+                if(log.isEnabled()) log.getLogger().info("API KEY " + gptSelection.getGPTAPIKey());
                 HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
                 HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
 

@@ -261,7 +261,7 @@ public class GPTSelection {
 
                 // Call internal selection parameters
 
-                setSelectionInfo(new NVGenericMap("GPT-API-KEY").build("gpt-key", apiKey));
+                setSelectionInfo(new NVGenericMap("gpt-api-key").build("gpt-key", apiKey));
 
                 // Close the dialog
                 dialog.dispose();
