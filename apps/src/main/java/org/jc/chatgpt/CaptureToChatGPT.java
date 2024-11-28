@@ -3,6 +3,7 @@ package org.jc.chatgpt;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.xlogistx.api.gpt.GPTAPI;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
 import io.xlogistx.widget.LedWidget;
@@ -10,6 +11,7 @@ import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
 import org.jc.imaging.ocr.OCRUtil;
+import org.zoxweb.server.http.HTTPAPICaller;
 import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
 import org.zoxweb.server.io.UByteArrayOutputStream;
@@ -61,8 +63,10 @@ public class CaptureToChatGPT extends JFrame {
 
     private LedWidget activityLed;
 
+    private final HTTPAPICaller gptAPI = GPTAPI.SINGLETON.create(null);
 
-    private ReentrantLock lock = new ReentrantLock();
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 40, true, 10, 20).build();
 
@@ -75,7 +79,7 @@ public class CaptureToChatGPT extends JFrame {
     // API keys (replace with your actual keys)
     private static String ocrApiKey = null; // Replace with your OCR.space API key
     //private static String openAIApiKey = null; // Replace with your OpenAI API key
-    private static String openAIApiURL = null;
+    //private static String openAIApiURL = null;
     private static String openAIModel = null;
     private Future<?> future = null;
     public CaptureToChatGPT() {
@@ -328,13 +332,17 @@ public class CaptureToChatGPT extends JFrame {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
                 // chat gpt API
-                request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
-                if(log.isEnabled()) log.getLogger().info("API KEY " + gptSelection.getGPTAPIKey());
-                HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
-                HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
+                //request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
+                request = GPTAPI.SINGLETON.toVisionParams(modelName.getText(),  prompt, 5000,baos, "png");
+//                if(log.isEnabled()) log.getLogger().info("API KEY " + gptSelection.getGPTAPIKey());
+//                HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
+//                HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
 
-                if (rd.getStatus() == HTTPStatusCode.OK.CODE) {
-                    response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
+                //if (rd.getStatus() == HTTPStatusCode.OK.CODE)
+                {
+                    //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
+                    gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
+                    response = gptAPI.syncCall(GPTAPI.Command.COMPLETION, request);
                     if (log.isEnabled()) log.getLogger().info("" + response);
                     NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
@@ -370,7 +378,7 @@ public class CaptureToChatGPT extends JFrame {
                     }
 
                 }
-                log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
+                //log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
             }
         }
         finally {
@@ -536,13 +544,14 @@ public class CaptureToChatGPT extends JFrame {
     // Main method
     public static void main(String ...args) {
 
-        try {
+        try
+        {
             ParamUtil.ParamMap params = ParamUtil.parse("=", args);
 
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
             String openAIApiKey = params.stringValue("gpt-key", true);
-            openAIApiURL = params.stringValue("gpt-url", true);
+            //openAIApiURL = params.stringValue("gpt-url", true);
             openAIModel = params.stringValue("gpt-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
             String filterContent = null;

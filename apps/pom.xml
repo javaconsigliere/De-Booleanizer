@@ -71,6 +71,11 @@
             <artifactId>xlogistx-widget</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.xlogistx.api</groupId>
+            <artifactId>chatgpt</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>
