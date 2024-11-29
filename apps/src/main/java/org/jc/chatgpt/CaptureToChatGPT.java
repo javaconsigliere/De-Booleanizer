@@ -68,7 +68,7 @@ public class CaptureToChatGPT extends JFrame {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 40, true, 10, 20).build();
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 120, true, 10, 120).build();
 
 
     static private Rectangle selectedArea;
@@ -235,6 +235,9 @@ public class CaptureToChatGPT extends JFrame {
 
         // Initially, stop button is disabled
         stopButton.setEnabled(false);
+
+        gptAPI.updateOkHttpClient(httpClient);
+
     }
 
     @EndPointProp(methods = {HTTPMethod.GET}, name="to-chat-gpt", uris="/capture-to-gpt")
@@ -328,18 +331,20 @@ public class CaptureToChatGPT extends JFrame {
             }
 
 
-            if (SUS.isNotEmpty(prompt)) {
+            if (SUS.isNotEmpty(prompt))
+            {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
-                // chat gpt API
-                //request = ChatGPTUtil.toData(modelName.getText(), prompt, "png", 5000, baos);
-                request = GPTAPI.SINGLETON.toVisionParams(modelName.getText(),  prompt, 5000,baos, "png");
-//                if(log.isEnabled()) log.getLogger().info("API KEY " + gptSelection.getGPTAPIKey());
-//                HTTPMessageConfigInterface hmci = ChatGPTUtil.toHMCI(openAIApiURL, HTTPMethod.POST, gptSelection.getGPTAPIKey(), request);
-//                HTTPResponseData rd = OkHTTPCall.send(httpClient, hmci);
+                String[] models = modelName.getText().split(",");
 
-                //if (rd.getStatus() == HTTPStatusCode.OK.CODE)
-                {
+                Object content = null;
+                for (int i = 0; i < models.length; i++) {
+                    if (content == null)
+                        request = GPTAPI.SINGLETON.toVisionParams(models[i], prompt, 5000, baos, "png");
+                    else
+                        request = GPTAPI.SINGLETON.toPromptParams(models[i], "" + content, 5000);
+
+
                     //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
                     gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
                     response = gptAPI.syncCall(GPTAPI.Command.COMPLETION, request);
@@ -352,12 +357,15 @@ public class CaptureToChatGPT extends JFrame {
                     if (log.isEnabled()) log.getLogger().info("" + firstChoice);
                     NVGenericMap message = (NVGenericMap) firstChoice.get("message");
 
-                    if (log.isEnabled()) log.getLogger().info("Content\n" + message.getValue("content"));
+                    content = message.getValue("content");
+                    if (log.isEnabled()) log.getLogger().info("Content\n" + content);
 
                     SwingUtilities.invokeLater(() -> resultTextArea.setText("" + message.getValue("content")));
+                }
+
 
                     if(autoCopyToClipboardCB.isSelected()) {
-                        Object content = message.getValue("content");
+
                         String toClipboard = null;
                         if(sf != null && content instanceof String)
                         {
@@ -377,7 +385,7 @@ public class CaptureToChatGPT extends JFrame {
                         }
                     }
 
-                }
+
                 //log.getLogger().info("api call duration " + Const.TimeInMillis.toString(rd.getDuration()));
             }
         }
