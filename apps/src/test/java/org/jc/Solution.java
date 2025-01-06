@@ -60,4 +60,14 @@ public class Solution {
         return invalidTransactions;
     }
 
+    public boolean voweGame(String s) {
+        int count = 0;
+        for (char c : s.toCharArray()) {
+            if ("aeiou".indexOf(c) != -1) {
+                count++;
+            }
+        }
+        return count % 2 == 0; // Returns true if the number of vowels is even
+    }
+
 }
