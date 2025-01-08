@@ -1,12 +1,20 @@
 package org.jc;
 
+import org.zoxweb.server.io.IOUtil;
+import org.zoxweb.server.io.UByteArrayOutputStream;
+import org.zoxweb.shared.util.ParamUtil;
+
 import javax.sound.sampled.*;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
-public class AudioToWavByteArray {
+public class AudioTool
+{
+    private AudioTool() {}
 
     public static void writeWavHeader(ByteArrayOutputStream out, int totalDataLen, float sampleRate, int channels, int byteRate) throws IOException {
         byte[] header = new byte[44];
@@ -69,7 +77,7 @@ public class AudioToWavByteArray {
      *
      * @return The AudioFormat instance.
      */
-    private AudioFormat getAudioFormat() {
+    private static AudioFormat getAudioFormat() {
         float sampleRate = 16000.0f; // 16 kHz
         int sampleSizeInBits = 16;    // 16 bits
         int channels = 1;             // Mono
@@ -85,17 +93,17 @@ public class AudioToWavByteArray {
      * @param recordTimeInSeconds Duration of recording in seconds.
      * @return Byte array representing the complete WAVE file, or null if recording fails.
      */
-    public byte[] recordAudio(int recordTimeInSeconds) {
+    public static UByteArrayOutputStream recordAudio(int recordTimeInSeconds) throws IOException {
         AudioFormat format = getAudioFormat();
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         TargetDataLine targetLine = null;
 
-        try {
-            if (!AudioSystem.isLineSupported(info)) {
-                System.err.println("The system does not support the specified format.");
-                return null;
-            }
+        try
+        {
+            if (!AudioSystem.isLineSupported(info))
+                throw new IllegalArgumentException("The system does not support the specified format.");
+
 
             targetLine = (TargetDataLine) AudioSystem.getLine(info);
             targetLine.open(format);
@@ -104,11 +112,11 @@ public class AudioToWavByteArray {
             System.out.println("Recording started...");
 
             byte[] buffer = new byte[4096];
-            int bytesRead = 0;
+
             long endTime = System.currentTimeMillis() + recordTimeInSeconds * 1000;
 
             while (System.currentTimeMillis() < endTime) {
-                bytesRead = targetLine.read(buffer, 0, buffer.length);
+                int bytesRead = targetLine.read(buffer, 0, buffer.length);
                 byteArrayOutputStream.write(buffer, 0, bytesRead);
             }
 
@@ -141,54 +149,123 @@ public class AudioToWavByteArray {
      * @param format    The audio format.
      * @return A byte array representing the complete WAVE file, or null if an error occurs.
      */
-    public byte[] createWavFile(byte[] audioData, AudioFormat format) {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            int totalDataLen = audioData.length + 36;
-            int byteRate = (int) format.getSampleRate() * format.getChannels() * format.getSampleSizeInBits() / 8;
+    public static UByteArrayOutputStream createWavFile(byte[] audioData, AudioFormat format) throws IOException {
+        UByteArrayOutputStream out = new UByteArrayOutputStream();
 
-            // Write WAVE header
-            writeWavHeader(out, totalDataLen, format.getSampleRate(), format.getChannels(), byteRate);
+        int totalDataLen = audioData.length + 36;
+        int byteRate = (int) format.getSampleRate() * format.getChannels() * format.getSampleSizeInBits() / 8;
 
-            // Write audio data
-            out.write(audioData);
+        // Write WAVE header
+        writeWavHeader(out, totalDataLen, format.getSampleRate(), format.getChannels(), byteRate);
 
-            return out.toByteArray();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+        // Write audio data
+        out.write(audioData);
+
+        return out;
     }
 
     /**
      * Saves the WAVE byte array to a file.
      *
-     * @param wavBytes   The WAVE byte array.
-     * @param outputPath The path to save the WAVE file.
+     * @param wave   The WAVE byte array.
+     * @param os The path to save the WAVE file.
      */
-    public void saveWavToFile(byte[] wavBytes, String outputPath) {
-        if (wavBytes == null) {
-            System.err.println("No audio data to save.");
-            return;
+    public static void saveWavToFile(UByteArrayOutputStream wave, OutputStream os, boolean closeOS) throws IOException {
+        try
+        {
+            wave.writeTo(os, 4096);
         }
-
-        try (FileOutputStream fos = new FileOutputStream(new File(outputPath))) {
-            fos.write(wavBytes);
-            System.out.println("WAV file saved to: " + outputPath);
-        } catch (IOException e) {
-            System.err.println("Failed to save WAV file.");
-            e.printStackTrace();
+        finally
+        {
+            if(closeOS) IOUtil.close(os);
         }
     }
 
+
+
+    public static void displayMics() {
+        List<Mixer.Info> microphones = getAvailableMics();
+
+        if (microphones.isEmpty()) {
+            System.out.println("No microphones found on this system.");
+        } else {
+            System.out.println("Available Microphones:");
+            for (int i = 0; i < microphones.size(); i++) {
+                Mixer.Info mixerInfo = microphones.get(i);
+                Mixer mixer = AudioSystem.getMixer(mixerInfo);
+
+                System.out.println((i + 1) + ". " + mixerInfo.getName());
+                System.out.println("   Description: " + mixerInfo.getDescription());
+                System.out.println("   Vendor: " + mixerInfo.getVendor());
+                System.out.println("   Version: " + mixerInfo.getVersion());
+
+                // List supported formats
+                Line.Info[] targetLineInfos = mixer.getTargetLineInfo();
+                for (Line.Info lineInfo : targetLineInfos) {
+                    if (lineInfo instanceof DataLine.Info) {
+                        DataLine.Info dataLineInfo = (DataLine.Info) lineInfo;
+                        AudioFormat[] formats = dataLineInfo.getFormats();
+
+                        System.out.println("   Supported Formats:");
+                        for (AudioFormat format : formats) {
+                            System.out.println("      " + format.toString());
+                        }
+                    }
+                }
+                System.out.println();
+            }
+        }
+    }
+
+    /**
+     * Retrieves a list of available microphone devices on the system.
+     *
+     * @return List of Mixer.Info objects representing microphones.
+     */
+    public static List<Mixer.Info> getAvailableMics() {
+        List<Mixer.Info> microphoneList = new ArrayList<>();
+        Mixer.Info[] mixers = AudioSystem.getMixerInfo();
+
+        for (Mixer.Info mixerInfo : mixers) {
+            Mixer mixer = AudioSystem.getMixer(mixerInfo);
+            Line.Info[] targetLineInfos = mixer.getTargetLineInfo();
+
+            if (targetLineInfos.length > 0) { // Mixer supports audio input
+                // Optional: Further filter based on name
+                String mixerName = mixerInfo.getName().toLowerCase();
+                if (mixerName.contains("microphone") || mixerName.contains("input")) {
+                    microphoneList.add(mixerInfo);
+                }
+            }
+        }
+
+        return microphoneList;
+    }
+
+
     public static void main(String[] args) {
-        AudioToWavByteArray recorder = new AudioToWavByteArray();
-        int duration = 5; // seconds
-        String outputFilePath = "recorded_audio.wav";
+        try
+        {
+            displayMics();
+            ParamUtil.ParamMap params = ParamUtil.parse("=", args);
+            int duration = params.intValue("d", 5);
 
-        // Record audio
-        byte[] wavBytes = recorder.recordAudio(duration);
 
-        // Save to file
-        recorder.saveWavToFile(wavBytes, outputFilePath);
+            String outputFilePath = params.stringValue("of","recorded_audio.wav");
+            if(!outputFilePath.toLowerCase().endsWith(".wav"))
+            {
+                outputFilePath += ".wav";
+            }
+
+            // Record audio
+            UByteArrayOutputStream recordingOS = AudioTool.recordAudio(duration);
+
+            // Save to file
+            AudioTool.saveWavToFile(recordingOS, new FileOutputStream(outputFilePath), true);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 }
