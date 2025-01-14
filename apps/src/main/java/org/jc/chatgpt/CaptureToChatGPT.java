@@ -328,11 +328,33 @@ public class CaptureToChatGPT extends JFrame {
     {
         if (log.isEnabled())
             log.getLogger().info("Speech api");
-        return processSpeechChatGPT();
+
+        if (lock.isLocked())
+            return new NVGenericMap().build("Status", "processing");
+        else
+            TaskUtil.defaultTaskProcessor().execute(()->{
+                boolean locked = false;
+                try
+                {
+                    locked = lock.tryLock();
+                    if (locked)
+                        processSpeechChatGPT();
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+                finally {
+                    if(locked)
+                        lock.unlock();
+                }
+            });
+
+        return new NVGenericMap().build("Status", "processing");
     }
 
 
-    private NVGenericMap processSpeechChatGPT() throws IOException {
+    private  void processSpeechChatGPT() throws IOException {
         AudioRecorder.Status status = audioRecorder.getStatus();
         switch (status)
         {
@@ -345,7 +367,7 @@ public class CaptureToChatGPT extends JFrame {
                 {
                     // send to chatgpt transcribe
 
-                    recordingLed.setStatus(AudioRecorder.Status.PROCESSING);
+                    SwingUtilities.invokeLater(() ->recordingLed.setStatus(AudioRecorder.Status.PROCESSING));
                     NamedValue<InputStream> audioClip = new NamedValue<InputStream>();
                     audioClip.setName("AudioClip.wav");
 
@@ -379,13 +401,8 @@ public class CaptureToChatGPT extends JFrame {
                         SwingUtilities.invokeLater(() -> resultTextArea.setText("" + content));
 
                     }
-                    recordingLed.setStatus(AudioRecorder.Status.RECORDING);
-                    return response;
+                    SwingUtilities.invokeLater(() ->recordingLed.setStatus(AudioRecorder.Status.RECORDING));
 
-
-                }
-                else
-                {
 
                 }
 
@@ -403,7 +420,6 @@ public class CaptureToChatGPT extends JFrame {
                 break;
         }
 
-        return null;
     }
 
 
