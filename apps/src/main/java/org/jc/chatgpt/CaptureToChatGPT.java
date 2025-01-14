@@ -333,20 +333,21 @@ public class CaptureToChatGPT extends JFrame {
             return new NVGenericMap().build("Status", "processing");
         else
             TaskUtil.defaultTaskProcessor().execute(()->{
-                boolean locked = false;
-                try
+                boolean locked = lock.tryLock();
+                if(locked)
                 {
-                    locked = lock.tryLock();
-                    if (locked)
+                    try
+                    {
                         processSpeechChatGPT();
-                }
-                catch (Exception e)
-                {
-                    e.printStackTrace();
-                }
-                finally {
-                    if(locked)
+                    }
+                    catch (Exception e)
+                    {
+                        e.printStackTrace();
+                    }
+                    finally
+                    {
                         lock.unlock();
+                    }
                 }
             });
 
@@ -355,69 +356,77 @@ public class CaptureToChatGPT extends JFrame {
 
 
     private  void processSpeechChatGPT() throws IOException {
-        AudioRecorder.Status status = audioRecorder.getStatus();
-        switch (status)
+        boolean locked = lock.tryLock();
+        if(locked)
         {
-            case RECORDING:
-                // we need to stop recording
-                //audioRecorder.setStatus(AudioRecorder.Status.STOP_RECORDING);
-                InputStream recordedData = audioRecorder.getRecordedStream();
+            try {
+                AudioRecorder.Status status = audioRecorder.getStatus();
+                switch (status) {
+                    case RECORDING:
+                        // we need to stop recording
+                        //audioRecorder.setStatus(AudioRecorder.Status.STOP_RECORDING);
+                        InputStream recordedData = audioRecorder.getRecordedStream();
 
-                if (recordedData != null)
-                {
-                    // send to chatgpt transcribe
+                        if (recordedData != null) {
+                            // send to chatgpt transcribe
 
-                    SwingUtilities.invokeLater(() ->recordingLed.setStatus(AudioRecorder.Status.PROCESSING));
-                    NamedValue<InputStream> audioClip = new NamedValue<InputStream>();
-                    audioClip.setName("AudioClip.wav");
+                            SwingUtilities.invokeLater(() -> recordingLed.setStatus(AudioRecorder.Status.PROCESSING));
+                            NamedValue<InputStream> audioClip = new NamedValue<InputStream>();
+                            audioClip.setName("AudioClip.wav");
 
-                    System.out.println("length "  + recordedData.available());
-                    audioClip.setValue(recordedData);
-                    gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
-                    NVGenericMap response = gptAPI.syncCall(GPTAPI.Command.TRANSCRIBE, audioClip);
-                    String toDisplay = response.getValue("text");
-                    SwingUtilities.invokeLater(() -> resultTextArea.setText("" + toDisplay));
-                    String[] models = recordingModelName.getText().split(",");
-
-
-                    for(int i = 0; i < models.length; i++)
-                    {
-                        NVGenericMap request = GPTAPI.SINGLETON.toPromptParams(models[i], "" + response.getValue("text"), 5000);
-
-                        gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
-                        response = gptAPI.syncCall(GPTAPI.Command.COMPLETION, request);
-                        if (log.isEnabled()) log.getLogger().info("" + response);
-                        NVGenericMapList choices = (NVGenericMapList) response.get("choices");
+                            System.out.println("length " + recordedData.available());
+                            audioClip.setValue(recordedData);
+                            gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
+                            NVGenericMap response = gptAPI.syncCall(GPTAPI.Command.TRANSCRIBE, audioClip);
+                            String toDisplay = response.getValue("text");
+                            SwingUtilities.invokeLater(() -> resultTextArea.setText("" + toDisplay));
+                            String[] models = recordingModelName.getText().split(",");
 
 
-                        if (log.isEnabled()) log.getLogger().info("" + choices);
-                        NVGenericMap firstChoice = choices.getValue().get(0);
-                        if (log.isEnabled()) log.getLogger().info("" + firstChoice);
-                        NVGenericMap message = (NVGenericMap) firstChoice.get("message");
+                            for (int i = 0; i < models.length; i++) {
+                                if (SUS.isNotEmpty(models[i])) {
+                                    NVGenericMap request = GPTAPI.SINGLETON.toPromptParams(models[i], "" + response.getValue("text"), 5000);
 
-                        String content = message.getValue("content");
-                        if (log.isEnabled()) log.getLogger().info("Content\n" + content);
-
-                        SwingUtilities.invokeLater(() -> resultTextArea.setText("" + content));
-
-                    }
-                    SwingUtilities.invokeLater(() ->recordingLed.setStatus(AudioRecorder.Status.RECORDING));
+                                    gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
+                                    response = gptAPI.syncCall(GPTAPI.Command.COMPLETION, request);
+                                    if (log.isEnabled()) log.getLogger().info("" + response);
+                                    NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
 
+                                    if (log.isEnabled()) log.getLogger().info("" + choices);
+                                    NVGenericMap firstChoice = choices.getValue().get(0);
+                                    if (log.isEnabled()) log.getLogger().info("" + firstChoice);
+                                    NVGenericMap message = (NVGenericMap) firstChoice.get("message");
+
+                                    String content = message.getValue("content");
+                                    if (log.isEnabled()) log.getLogger().info("Content\n" + content);
+
+                                    SwingUtilities.invokeLater(() -> resultTextArea.setText("" + content));
+                                }
+
+                            }
+                            SwingUtilities.invokeLater(() -> recordingLed.setStatus(AudioRecorder.Status.RECORDING));
+
+                        }
+
+
+                        break;
+                    case STOP_RECORDING:
+                        audioRecorder.setStatus(AudioRecorder.Status.RECORDING);
+                        recordingLed.setStatus(AudioRecorder.Status.RECORDING);
+                        break;
+                    case ERROR:
+                        break;
+                    case CLOSED:
+                        break;
+                    case PROCESSING:
+                        break;
                 }
-
-
-                break;
-            case STOP_RECORDING:
-                audioRecorder.setStatus(AudioRecorder.Status.RECORDING);
-                recordingLed.setStatus(AudioRecorder.Status.RECORDING);
-                break;
-            case ERROR:
-                break;
-            case CLOSED:
-                break;
-            case PROCESSING:
-                break;
+            }
+            finally
+            {
+                lock.unlock();
+            }
         }
 
     }
