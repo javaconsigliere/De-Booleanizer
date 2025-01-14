@@ -10,6 +10,9 @@ import io.xlogistx.widget.LedWidget;
 import io.xlogistx.widget.WidgetUtil;
 import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
+import org.jc.audio.AudioRecorder;
+import org.jc.audio.AudioUtil;
+import org.jc.gui.GUIUtil;
 import org.jc.imaging.ocr.OCRUtil;
 import org.zoxweb.server.http.HTTPAPICaller;
 import org.zoxweb.server.http.OkHTTPCall;
@@ -22,10 +25,14 @@ import org.zoxweb.server.util.GSONUtil;
 import org.zoxweb.shared.annotation.EndPointProp;
 import org.zoxweb.shared.annotation.MappedProp;
 import org.zoxweb.shared.filters.StringFilter;
-import org.zoxweb.shared.http.*;
+import org.zoxweb.shared.http.HTTPAuthScheme;
+import org.zoxweb.shared.http.HTTPAuthorization;
+import org.zoxweb.shared.http.HTTPMethod;
+import org.zoxweb.shared.http.HTTPServerConfig;
 import org.zoxweb.shared.util.*;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -49,21 +56,29 @@ public class CaptureToChatGPT extends JFrame {
     private JButton stopButton;
     private JButton clearPromptButton;
     private JButton selectButton;
-    private JButton manualButton;
+    private JButton captureButton;
+
     private JTextField refreshRateField;
     private FilterPromptPanel filterPromptPanel;
     private JTextArea resultTextArea;
     private JFileChooser fileChooser;
     private JButton fileChooserButton;
-    private JTextField modelName;
+    private JTextField captureModelName;
+    private JTextField recordingModelName;
     private JCheckBox autoCopyToClipboardCB;
 
     private GPTSelection gptSelection;
     private BufferedImage lastCapture;
 
-    private LedWidget activityLed;
+    private LedWidget captureLed;
+    private LedWidget recordingLed = (LedWidget) new LedWidget(30,30, Color.BLACK)
+            .mapStatus(AudioRecorder.Status.RECORDING, Color.RED)
+            .mapStatus(AudioRecorder.Status.STOP_RECORDING, Color.MAGENTA)
+            .mapStatus(AudioRecorder.Status.PROCESSING, Color.BLUE);
+    private JButton recordingButton;
 
     private final HTTPAPICaller gptAPI = GPTAPI.SINGLETON.create(null);
+    private AudioRecorder audioRecorder;
 
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -87,6 +102,13 @@ public class CaptureToChatGPT extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
+        try {
+            audioRecorder = new AudioRecorder(AudioUtil.defaultAudioFormat(), true);
+            TaskUtil.defaultTaskProcessor().execute(audioRecorder);
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+            audioRecorder = null;
+        }
     }
 
 
@@ -154,12 +176,21 @@ public class CaptureToChatGPT extends JFrame {
     }
     private void initComponents() {
         // Panel for controls
-        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        activityLed = new LedWidget(30, 30, Color.BLACK);
-        activityLed.mapStatus(Const.Bool.ON, Color.GREEN)
+        //JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
+
+
+        captureLed = new LedWidget(30, 30, Color.BLACK);
+        captureLed.mapStatus(Const.Bool.ON, Color.GREEN)
                         .mapStatus(Const.Bool.OFF, Color.RED);
-        activityLed.setStatus(Const.Bool.ON);
-        manualButton = new JButton("Manual");
+        captureLed.setStatus(Const.Bool.ON);
+
+        recordingButton = new JButton("Record");
+        recordingLed.setStatus(AudioRecorder.Status.STOP_RECORDING);
+
+
+        captureButton = new JButton("Capture");
         startButton = new JButton("Start");
         stopButton = new JButton("Stop");
         clearPromptButton = new JButton("Clear Prompt");
@@ -172,25 +203,57 @@ public class CaptureToChatGPT extends JFrame {
         fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         fileChooserButton = new JButton("Files");
-        modelName = new JTextField(10);
-        modelName.setText(openAIModel);
+        captureModelName = new JTextField(10);
+        captureModelName.setText(openAIModel);
+        recordingModelName = new JTextField(10);
+        recordingModelName.setText(openAIModel);
         //controlPanel.add(selectButton);
-        controlPanel.add(manualButton);
-        controlPanel.add(autoCopyToClipboardCB);
-        controlPanel.add(activityLed);
-        controlPanel.add(startButton);
-        controlPanel.add(stopButton);
-        controlPanel.add(clearPromptButton);
-        controlPanel.add(new JLabel("Refresh Rate (s):"));
-        controlPanel.add(refreshRateField);
 
-        controlPanel.add(new JLabel("CONF"));
-        controlPanel.add(gptSelection.selectionBox);
 
-//        controlPanel.add(new JLabel("Filename"));
-        controlPanel.add(fileChooserButton);
-        controlPanel.add(new JLabel("Model"));
-        controlPanel.add(modelName);
+
+//        controlPanel.add(manualButton);
+//        controlPanel.add(autoCopyToClipboardCB);
+//        controlPanel.add(captureLed);
+//        controlPanel.add(new JLabel("Model"));
+//        controlPanel.add(modelName);
+
+        controlPanel.add(GUIUtil.createPanel("ScreenCapture", new FlowLayout(FlowLayout.LEFT),
+                captureButton,
+                autoCopyToClipboardCB,
+                captureLed,
+                new JLabel("Model"),
+                captureModelName));
+
+
+        controlPanel.add(GUIUtil.createPanel("AudioCapture", new FlowLayout(FlowLayout.LEFT),
+                recordingButton,
+                recordingLed,
+                new JLabel("Model"),
+                recordingModelName));
+
+
+
+
+
+//        controlPanel.add(clearPromptButton);
+//        controlPanel.add(startButton);
+//        controlPanel.add(stopButton);
+//        controlPanel.add(new JLabel("Refresh Rate (s):"));
+//        controlPanel.add(refreshRateField);
+//        controlPanel.add(new JLabel("CONF"));
+//        controlPanel.add(gptSelection.selectionBox);
+//        controlPanel.add(fileChooserButton);
+        controlPanel.add(GUIUtil.createPanel("Control", new FlowLayout(FlowLayout.LEFT),
+                clearPromptButton,
+                startButton,
+                stopButton,
+                new JLabel("Refresh Rate (s):"),
+                refreshRateField,
+                new JLabel("CONF"),
+                gptSelection.selectionBox,
+                fileChooserButton));
+
+
 
         fileChooserButton.addActionListener(e->fileChooser.showOpenDialog(this));
 
@@ -204,11 +267,20 @@ public class CaptureToChatGPT extends JFrame {
         // Button actions
         selectButton.addActionListener(e -> selectProcessing());
         startButton.addActionListener(e -> startProcessing());
-        manualButton.addActionListener(e->{
+        recordingButton.addActionListener(e->{
+            try {
+                speechToGPT();
+            }
+            catch (Exception exp)
+            {
+                exp.printStackTrace();
+            }
+        });
+        captureButton.addActionListener(e->{
             try {
                 TaskUtil.defaultTaskScheduler().queue(200, ()-> {
                     try {
-                        processChatGPT();
+                        processCaptureChatGPT();
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }
@@ -245,14 +317,97 @@ public class CaptureToChatGPT extends JFrame {
 
         if (!lock.isLocked())
         {
-            return processChatGPT();
+            return processCaptureChatGPT();
         }
 
         return new NVGenericMap().build("system", "busy");
     }
 
+    @EndPointProp(methods = {HTTPMethod.GET}, name="speech-to-gpt", uris="/speech-to-gpt")
+    public NVGenericMap speechToGPT() throws IOException
+    {
+        if (log.isEnabled())
+            log.getLogger().info("Speech api");
+        return processSpeechChatGPT();
+    }
 
-    private NVGenericMap processChatGPT() throws AWTException, IOException, TesseractException
+
+    private NVGenericMap processSpeechChatGPT() throws IOException {
+        AudioRecorder.Status status = audioRecorder.getStatus();
+        switch (status)
+        {
+            case RECORDING:
+                // we need to stop recording
+                //audioRecorder.setStatus(AudioRecorder.Status.STOP_RECORDING);
+                InputStream recordedData = audioRecorder.getRecordedStream();
+
+                if (recordedData != null)
+                {
+                    // send to chatgpt transcribe
+
+                    recordingLed.setStatus(AudioRecorder.Status.PROCESSING);
+                    NamedValue<InputStream> audioClip = new NamedValue<InputStream>();
+                    audioClip.setName("AudioClip.wav");
+
+                    System.out.println("length "  + recordedData.available());
+                    audioClip.setValue(recordedData);
+                    gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
+                    NVGenericMap response = gptAPI.syncCall(GPTAPI.Command.TRANSCRIBE, audioClip);
+                    String toDisplay = response.getValue("text");
+                    SwingUtilities.invokeLater(() -> resultTextArea.setText("" + toDisplay));
+                    String[] models = recordingModelName.getText().split(",");
+
+
+                    for(int i = 0; i < models.length; i++)
+                    {
+                        NVGenericMap request = GPTAPI.SINGLETON.toPromptParams(models[i], "" + response.getValue("text"), 5000);
+
+                        gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
+                        response = gptAPI.syncCall(GPTAPI.Command.COMPLETION, request);
+                        if (log.isEnabled()) log.getLogger().info("" + response);
+                        NVGenericMapList choices = (NVGenericMapList) response.get("choices");
+
+
+                        if (log.isEnabled()) log.getLogger().info("" + choices);
+                        NVGenericMap firstChoice = choices.getValue().get(0);
+                        if (log.isEnabled()) log.getLogger().info("" + firstChoice);
+                        NVGenericMap message = (NVGenericMap) firstChoice.get("message");
+
+                        String content = message.getValue("content");
+                        if (log.isEnabled()) log.getLogger().info("Content\n" + content);
+
+                        SwingUtilities.invokeLater(() -> resultTextArea.setText("" + content));
+
+                    }
+                    recordingLed.setStatus(AudioRecorder.Status.RECORDING);
+                    return response;
+
+
+                }
+                else
+                {
+
+                }
+
+
+                break;
+            case STOP_RECORDING:
+                audioRecorder.setStatus(AudioRecorder.Status.RECORDING);
+                recordingLed.setStatus(AudioRecorder.Status.RECORDING);
+                break;
+            case ERROR:
+                break;
+            case CLOSED:
+                break;
+            case PROCESSING:
+                break;
+        }
+
+        return null;
+    }
+
+
+    private NVGenericMap processCaptureChatGPT() throws AWTException, IOException, TesseractException
     {
         NVGenericMap request = null;
         NVGenericMap response = null;
@@ -274,8 +429,8 @@ public class CaptureToChatGPT extends JFrame {
         }
         try {
             lock.lock();
-            SwingUtilities.invokeLater(() -> activityLed.setStatus(Const.Bool.OFF));
-            manualButton.setEnabled(false);
+            SwingUtilities.invokeLater(() -> captureLed.setStatus(Const.Bool.OFF));
+            captureButton.setEnabled(false);
             String prompt = null;
             // Capture the selected screen area
             BufferedImage image = WidgetUtil.captureSelectedArea(selectedArea);
@@ -335,7 +490,7 @@ public class CaptureToChatGPT extends JFrame {
             {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
-                String[] models = modelName.getText().split(",");
+                String[] models = captureModelName.getText().split(",");
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
@@ -390,8 +545,8 @@ public class CaptureToChatGPT extends JFrame {
             }
         }
         finally {
-            SwingUtilities.invokeLater(()-> activityLed.setStatus(Const.Bool.ON));
-            manualButton.setEnabled(true);
+            SwingUtilities.invokeLater(()-> captureLed.setStatus(Const.Bool.ON));
+            captureButton.setEnabled(true);
             lock.unlock();
         }
 
@@ -427,7 +582,7 @@ public class CaptureToChatGPT extends JFrame {
 
         future = TaskUtil.defaultTaskScheduler().scheduleAtFixedRate(()->{try
         {
-            processChatGPT();
+            processCaptureChatGPT();
         }
         catch (Exception e)
         {

@@ -15,7 +15,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AudioUtil {
+public class AudioUtil
+{
     public static final LogWrapper log = new LogWrapper(AudioUtil.class).setEnabled(true);
     private AudioUtil(){}
 
@@ -47,8 +48,8 @@ public class AudioUtil {
 //                UByteArrayOutputStream baos = new UByteArrayOutputStream();
 //                recordAudio(mic, defaultAudioFormat(), AudioFileFormat.Type.WAVE, baos, 10);
 //                if(log.isEnabled()) log.getLogger().info(baos.toString(false));
-                UByteArrayOutputStream baos = recordAudio(5);
-                ByteArrayInputStream is = createWAVStream(baos, defaultAudioFormat());
+                UByteArrayOutputStream baos = recordAudio(null, defaultAudioFormat(), 5);
+                ByteArrayInputStream is = createWavStream(baos, defaultAudioFormat());
 //                IOUtil.relayStreams(is, new FileOutputStream("test.wav"), true);
                 is.reset();
                 Clip clip = loadClip(is);
@@ -75,14 +76,12 @@ public class AudioUtil {
     }
 
 
-    public static ByteArrayInputStream createWAVStream(UByteArrayOutputStream audioData, AudioFormat format) {
-            int totalDataLen = audioData.size() + 36;
-            int byteRate = (int) format.getSampleRate() * format.getChannels() * format.getSampleSizeInBits() / 8;
-
-
-            audioData.insertAt(0, createWavHeader(totalDataLen, format.getSampleRate(), format.getChannels(), byteRate));
-
-            return audioData.toByteArrayInputStream();
+    public static ByteArrayInputStream createWavStream(UByteArrayOutputStream audioData, AudioFormat format)
+    {
+        int totalDataLen = audioData.size() + 36;
+        int byteRate = (int) format.getSampleRate() * format.getChannels() * format.getSampleSizeInBits() / 8;
+        audioData.insertAt(0, createWavHeader(totalDataLen, format.getSampleRate(), format.getChannels(), byteRate));
+        return audioData.toByteArrayInputStream();
     }
 
 
@@ -110,40 +109,40 @@ public class AudioUtil {
         return null;
     }
 
-    public static void recordAudio(Mixer.Info mixerInfo,
-                                   AudioFormat format,
-                                   AudioFileFormat.Type type,
-                                   OutputStream outputStream,
-                                   int recordTimeInSeconds) throws IOException, LineUnavailableException
-    {
-
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-
-        try (//Mixer mixer = AudioSystem.getMixer(mixerInfo);
-             TargetDataLine targetLine = (TargetDataLine) AudioSystem.getLine(info)) {
-
-            targetLine.open(format);
-            targetLine.start();
-
-            if(log.isEnabled()) log.getLogger().info("Recording started...");
-
-            AudioInputStream audioStream = new AudioInputStream(targetLine);
-
-            // Create a thread to stop recording after the specified time
-            Thread stopper = new Thread(() -> {
-                TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*recordTimeInSeconds);
-                targetLine.stop();
-                targetLine.close();
-                if(log.isEnabled()) log.getLogger().info("Recording stopped.");
-            });
-
-            stopper.start();
-            TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*(recordTimeInSeconds +5));
-            // Write the audio data to the file
-            AudioSystem.write(audioStream, type, outputStream);
-
-        }
-    }
+//    public static void recordAudio(Mixer.Info mixerInfo,
+//                                   AudioFormat format,
+//                                   AudioFileFormat.Type type,
+//                                   OutputStream outputStream,
+//                                   int recordTimeInSeconds) throws IOException, LineUnavailableException
+//    {
+//
+//        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+//
+//        try (//Mixer mixer = AudioSystem.getMixer(mixerInfo);
+//             TargetDataLine targetLine = (TargetDataLine) AudioSystem.getLine(info)) {
+//
+//            targetLine.open(format);
+//            targetLine.start();
+//
+//            if(log.isEnabled()) log.getLogger().info("Recording started...");
+//
+//            AudioInputStream audioStream = new AudioInputStream(targetLine);
+//
+//            // Create a thread to stop recording after the specified time
+//            Thread stopper = new Thread(() -> {
+//                TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*recordTimeInSeconds);
+//                targetLine.stop();
+//                targetLine.close();
+//                if(log.isEnabled()) log.getLogger().info("Recording stopped.");
+//            });
+//
+//            stopper.start();
+//            TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*(recordTimeInSeconds +5));
+//            // Write the audio data to the file
+//            AudioSystem.write(audioStream, type, outputStream);
+//
+//        }
+//    }
 
 
     public static byte[] createWavHeader(int totalDataLen, float sampleRate, int channels, int byteRate)
@@ -205,90 +204,90 @@ public class AudioUtil {
 
 
 
-    public static UByteArrayOutputStream recordAudio(int recordTimeInSeconds) {
-        AudioFormat format = defaultAudioFormat();
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-        UByteArrayOutputStream byteArrayOutputStream = new UByteArrayOutputStream();
-        TargetDataLine targetLine = null;
+//    public static UByteArrayOutputStream recordAudio(int recordTimeInSeconds) {
+//        AudioFormat format = defaultAudioFormat();
+//        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+//        UByteArrayOutputStream byteArrayOutputStream = new UByteArrayOutputStream();
+//        TargetDataLine targetLine = null;
+//
+//        try {
+//            if (!AudioSystem.isLineSupported(info)) {
+//                System.err.println("The system does not support the specified format.");
+//                return null;
+//            }
+//
+//            targetLine = (TargetDataLine) AudioSystem.getLine(info);
+//            targetLine.open(format);
+//            targetLine.start();
+//
+//            System.out.println("Recording started...");
+//
+//            byte[] buffer = new byte[4096];
+//            int bytesRead = 0;
+//            long endTime = System.currentTimeMillis() + recordTimeInSeconds * 1000;
+//
+//            while (System.currentTimeMillis() < endTime) {
+//                bytesRead = targetLine.read(buffer, 0, buffer.length);
+//                byteArrayOutputStream.write(buffer, 0, bytesRead);
+//            }
+//
+//            System.out.println("Recording stopped.");
+//
+//        } catch (LineUnavailableException ex) {
+//            System.err.println("Microphone not available.");
+//            ex.printStackTrace();
+//        } finally {
+//            if (targetLine != null) {
+//                targetLine.stop();
+//                targetLine.close();
+//            }
+//        }
+//
+//        return byteArrayOutputStream;
+//    }
 
-        try {
-            if (!AudioSystem.isLineSupported(info)) {
-                System.err.println("The system does not support the specified format.");
-                return null;
-            }
 
-            targetLine = (TargetDataLine) AudioSystem.getLine(info);
-            targetLine.open(format);
-            targetLine.start();
-
-            System.out.println("Recording started...");
-
-            byte[] buffer = new byte[4096];
-            int bytesRead = 0;
-            long endTime = System.currentTimeMillis() + recordTimeInSeconds * 1000;
-
-            while (System.currentTimeMillis() < endTime) {
-                bytesRead = targetLine.read(buffer, 0, buffer.length);
-                byteArrayOutputStream.write(buffer, 0, bytesRead);
-            }
-
-            System.out.println("Recording stopped.");
-
-        } catch (LineUnavailableException ex) {
-            System.err.println("Microphone not available.");
-            ex.printStackTrace();
-        } finally {
-            if (targetLine != null) {
-                targetLine.stop();
-                targetLine.close();
-            }
-        }
-
-        return byteArrayOutputStream;
-    }
-
-
-    public static UByteArrayOutputStream recordAudioThreaded(int recordTimeInSeconds) {
-        AudioFormat format = defaultAudioFormat();
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-        UByteArrayOutputStream byteArrayOutputStream = new UByteArrayOutputStream();
-        TargetDataLine targetLine = null;
-
-        try {
-            if (!AudioSystem.isLineSupported(info)) {
-                System.err.println("The system does not support the specified format.");
-                return null;
-            }
-
-            targetLine = (TargetDataLine) AudioSystem.getLine(info);
-            targetLine.open(format);
-            targetLine.start();
-
-            System.out.println("Recording started...");
-
-            byte[] buffer = new byte[4096];
-            int bytesRead = 0;
-            long endTime = System.currentTimeMillis() + recordTimeInSeconds * 1000;
-
-            while (System.currentTimeMillis() < endTime) {
-                bytesRead = targetLine.read(buffer, 0, buffer.length);
-                byteArrayOutputStream.write(buffer, 0, bytesRead);
-            }
-
-            System.out.println("Recording stopped.");
-
-        } catch (LineUnavailableException ex) {
-            System.err.println("Microphone not available.");
-            ex.printStackTrace();
-        } finally {
-            if (targetLine != null) {
-                targetLine.stop();
-                targetLine.close();
-            }
-        }
-
-        return byteArrayOutputStream;
-    }
+//    public static UByteArrayOutputStream recordAudioThreaded(int recordTimeInSeconds) {
+//        AudioFormat format = defaultAudioFormat();
+//        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+//        UByteArrayOutputStream byteArrayOutputStream = new UByteArrayOutputStream();
+//        TargetDataLine targetLine = null;
+//
+//        try {
+//            if (!AudioSystem.isLineSupported(info)) {
+//                System.err.println("The system does not support the specified format.");
+//                return null;
+//            }
+//
+//            targetLine = (TargetDataLine) AudioSystem.getLine(info);
+//            targetLine.open(format);
+//            targetLine.start();
+//
+//            System.out.println("Recording started...");
+//
+//            byte[] buffer = new byte[4096];
+//            int bytesRead = 0;
+//            long endTime = System.currentTimeMillis() + recordTimeInSeconds * 1000;
+//
+//            while (System.currentTimeMillis() < endTime) {
+//                bytesRead = targetLine.read(buffer, 0, buffer.length);
+//                byteArrayOutputStream.write(buffer, 0, bytesRead);
+//            }
+//
+//            System.out.println("Recording stopped.");
+//
+//        } catch (LineUnavailableException ex) {
+//            System.err.println("Microphone not available.");
+//            ex.printStackTrace();
+//        } finally {
+//            if (targetLine != null) {
+//                targetLine.stop();
+//                targetLine.close();
+//            }
+//        }
+//
+//        return byteArrayOutputStream;
+//    }
 
     /**
      * Retrieves a list of available microphone devices on the system.
@@ -379,6 +378,216 @@ public class AudioUtil {
     }
 
 
+
+    /**
+     * Records audio for the specified duration and returns the WAVE byte array.
+     *
+     * @param recordTimeInSeconds Duration of recording in seconds.
+     * @return Byte array representing the complete WAVE file, or null if recording fails.
+     */
+    public static UByteArrayOutputStream recordAudio(UByteArrayOutputStream dataRecorder, AudioFormat format, int recordTimeInSeconds) throws IOException, LineUnavailableException {
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+        if(dataRecorder == null)
+            dataRecorder = new UByteArrayOutputStream();
+        TargetDataLine targetLine = null;
+
+        try {
+            if (!AudioSystem.isLineSupported(info))
+                throw new IllegalArgumentException("The system does not support the specified format.");
+
+
+            targetLine = (TargetDataLine) AudioSystem.getLine(info);
+            targetLine.open(format);
+            targetLine.start();
+
+            System.out.println("Recording started...");
+
+            byte[] buffer = new byte[4096];
+
+            long endTime = System.currentTimeMillis() + Const.TimeInMillis.SECOND.MILLIS*recordTimeInSeconds;
+
+            int bytesRead = 0;
+            while (System.currentTimeMillis() < endTime && bytesRead != -1) {
+//                int bytesRead = targetLine.read(buffer, 0, buffer.length);
+//                //System.out.println("byte read: "  + bytesRead);
+//                dataRecorder.write(buffer, 0, bytesRead);
+                bytesRead = recordChunk(targetLine, true, dataRecorder, buffer);
+            }
+
+            System.out.println("Recording stopped.");
+
+        } finally {
+            if (targetLine != null) {
+                targetLine.stop();
+                targetLine.close();
+            }
+
+        }
+        return dataRecorder;
+
+//        byte[] audioData = byteArrayOutputStream.toByteArray();
+//        return createWavFile(audioData, format);
+    }
+
+    public static int recordChunk(TargetDataLine tdl,
+                                  boolean dropSilence,
+                                  OutputStream outStream,
+                                  byte[] inBuffer) throws IOException
+    {
+        return recordChunk(tdl, dropSilence, outStream, inBuffer, 0, inBuffer.length);
+    }
+
+    public static int recordChunk(TargetDataLine tdl,
+                                  boolean dropSilence,
+                                  OutputStream outStream,
+                                  byte[] inBuffer,
+                                  int inBufferOffset,
+                                  int length) throws IOException
+    {
+        int bytesRead = tdl.read(inBuffer, inBufferOffset, length);
+        if(dropSilence)
+        {
+            if (!detectSilence(inBuffer, inBufferOffset, bytesRead, tdl.getFormat()))
+                outStream.write(inBuffer, inBufferOffset, bytesRead);
+        }
+        else {
+            outStream.write(inBuffer, inBufferOffset, bytesRead);
+        }
+        return bytesRead;
+    }
+
+    public static boolean detectSilence(byte[] audioBytes, int offset, int length, AudioFormat format) {
+        int frameSize = format.getFrameSize();
+        boolean isBigEndian = format.isBigEndian();
+
+        int threshold = 100; // Amplitude threshold for silence
+        int silenceFrames = 0;
+
+        for (int i = offset; i < offset + length; i += frameSize) {
+            int amplitude = 0;
+
+            // Extract sample amplitude (supporting 16-bit audio)
+            if (frameSize >= 2) {
+                if (isBigEndian) {
+                    amplitude = ((audioBytes[i] << 8) | (audioBytes[i + 1] & 0xFF));
+                } else {
+                    amplitude = ((audioBytes[i + 1] << 8) | (audioBytes[i] & 0xFF));
+                }
+            }
+
+            // Check if amplitude is below the threshold
+            if (Math.abs(amplitude) < threshold) {
+                silenceFrames++;
+            }
+        }
+
+        // Determine if the majority of frames are silent
+        double silencePercentage = (double) silenceFrames / (audioBytes.length / frameSize);
+        return silencePercentage > 0.95; // 95% silence threshold
+    }
+
+
+
+    /**
+     * Creates a WAVE byte array by adding a header to the raw audio data.
+     *
+     * @param audioData The raw audio data.
+     * @param format    The audio format.
+     * @return A byte array representing the complete WAVE file, or null if an error occurs.
+     */
+    public static UByteArrayOutputStream createWavFile(byte[] audioData, AudioFormat format) throws IOException {
+        UByteArrayOutputStream out = new UByteArrayOutputStream();
+
+        int totalDataLen = audioData.length + 36;
+        int byteRate = (int) format.getSampleRate() * format.getChannels() * format.getSampleSizeInBits() / 8;
+
+        out.write(AudioUtil.createWavHeader(totalDataLen, format.getSampleRate(), format.getChannels(), byteRate));
+        // Write WAVE header
+        // writeWavHeader(out, totalDataLen, format.getSampleRate(), format.getChannels(), byteRate);
+
+        // Write audio data
+        out.write(audioData);
+
+        return out;
+    }
+
+//    /**
+//     * Saves the WAVE byte array to a file.
+//     *
+//     * @param wave   The WAVE byte array.
+//     * @param os The path to save the WAVE file.
+//     */
+//    public static void saveWavToFile(UByteArrayOutputStream wave, OutputStream os, boolean closeOS) throws IOException {
+//        try
+//        {
+//            wave.writeTo(os, 4096);
+//        }
+//        finally
+//        {
+//            if(closeOS) IOUtil.close(os);
+//        }
+//    }
+
+
+
+    public static void displayMics() {
+        List<Mixer.Info> microphones = getAvailableMics();
+
+        if (microphones.isEmpty()) {
+            System.out.println("No microphones found on this system.");
+        } else {
+            System.out.println("Available Microphones:");
+            for (int i = 0; i < microphones.size(); i++) {
+                Mixer.Info mixerInfo = microphones.get(i);
+                Mixer mixer = AudioSystem.getMixer(mixerInfo);
+
+                System.out.println((i + 1) + ". " + mixerInfo.getName());
+                System.out.println("   Description: " + mixerInfo.getDescription());
+                System.out.println("   Vendor: " + mixerInfo.getVendor());
+                System.out.println("   Version: " + mixerInfo.getVersion());
+
+                // List supported formats
+                Line.Info[] targetLineInfos = mixer.getTargetLineInfo();
+                for (Line.Info lineInfo : targetLineInfos) {
+                    if (lineInfo instanceof DataLine.Info) {
+                        DataLine.Info dataLineInfo = (DataLine.Info) lineInfo;
+                        AudioFormat[] formats = dataLineInfo.getFormats();
+
+                        System.out.println("   Supported Formats:");
+                        for (AudioFormat format : formats) {
+                            System.out.println("      " + format.toString());
+                        }
+                    }
+                }
+                System.out.println();
+            }
+        }
+    }
+
+    /**
+     * Retrieves a list of available microphone devices on the system.
+     *
+     * @return List of Mixer.Info objects representing microphones.
+     */
+    public static List<Mixer.Info> getAvailableMics() {
+        List<Mixer.Info> microphoneList = new ArrayList<>();
+        Mixer.Info[] mixers = AudioSystem.getMixerInfo();
+
+        for (Mixer.Info mixerInfo : mixers) {
+            Mixer mixer = AudioSystem.getMixer(mixerInfo);
+            Line.Info[] targetLineInfos = mixer.getTargetLineInfo();
+
+            if (targetLineInfos.length > 0) { // Mixer supports audio input
+                // Optional: Further filter based on name
+                String mixerName = mixerInfo.getName().toLowerCase();
+                if (mixerName.contains("microphone") || mixerName.contains("input")) {
+                    microphoneList.add(mixerInfo);
+                }
+            }
+        }
+
+        return microphoneList;
+    }
 
 
 }
