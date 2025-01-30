@@ -1,7 +1,7 @@
 package org.jc.imaging.ocr;
 
 
-import io.xlogistx.widget.WidgetUtil;
+import io.xlogistx.gui.GUIUtil;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.zoxweb.shared.util.SharedUtil;
@@ -115,7 +115,7 @@ public class OCRUtil {
         {
             // compare the 2 images
 
-            boolean result = WidgetUtil.compareImages(image, oldImage);
+            boolean result = GUIUtil.compareImages(image, oldImage);
             if(result )
                 return lastResult;
         }

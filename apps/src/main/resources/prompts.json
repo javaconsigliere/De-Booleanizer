@@ -1,0 +1,6 @@
+{
+  "prompts": [
+    "Analyse the image and provide an optimized solution.",
+    "Analyze the image and generate an accurate prompt that will be consumed by an LLM"
+  ]
+}

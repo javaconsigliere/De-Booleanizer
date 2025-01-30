@@ -4,8 +4,7 @@ import org.zoxweb.shared.util.NVGenericMap;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.function.Consumer;
 
 public class GPTSelection {
 
@@ -13,14 +12,16 @@ public class GPTSelection {
     public JComboBox<String> selectionBox;
     private final JFrame mainFrame;
     private NVGenericMap selectionInfo = null;
+    private final Consumer<String> gptAPIKeyUpdater;
 
 
 
     private String gptAPIKey;
 
     // Constructor
-    public GPTSelection(JFrame mainFrame) {
+    public GPTSelection(JFrame mainFrame, Consumer<String> gtpUpdater) {
         this.mainFrame = mainFrame;
+        this.gptAPIKeyUpdater = gtpUpdater;
         initializeComponents();
     }
 
@@ -33,9 +34,8 @@ public class GPTSelection {
         selectionBox.setSelectedIndex(0);
 
         // Add an action listener to handle selection changes
-        selectionBox.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        selectionBox.addActionListener(e->{
+
                 String selectedOption = (String) selectionBox.getSelectedItem();
                 if ("Local OCR".equals(selectedOption)) {
                     showLocalOCRDialog();
@@ -48,7 +48,7 @@ public class GPTSelection {
                     // No OCR selected, call internal selection parameters
                     setSelectionInfo(null);
                 }
-            }
+
         });
 
         // Add the selection box to the panel
@@ -95,9 +95,8 @@ public class GPTSelection {
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        setButton.addActionListener(e->{
+
                 // Retrieve input values
                 String path = pathField.getText();
                 String language = languageField.getText();
@@ -110,16 +109,15 @@ public class GPTSelection {
 
                 // Close the dialog
                 dialog.dispose();
-            }
+
         });
 
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        cancelButton.addActionListener(e-> {
+
                 // Reset selection to "No OCR"
                 selectionBox.setSelectedIndex(0);
                 dialog.dispose();
-            }
+
         });
 
         // Assemble the dialog
@@ -173,9 +171,8 @@ public class GPTSelection {
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        setButton.addActionListener(e->{
+
                 // Retrieve input value
                 String apiKey = apiKeyField.getText();
 
@@ -188,16 +185,12 @@ public class GPTSelection {
 
                 // Close the dialog
                 dialog.dispose();
-            }
         });
 
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        cancelButton.addActionListener(e-> {
                 // Reset selection to "No OCR"
                 selectionBox.setSelectedIndex(0);
                 dialog.dispose();
-            }
         });
 
         // Assemble the dialog
@@ -249,9 +242,8 @@ public class GPTSelection {
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        setButton.addActionListener(e->
+        {
                 // Retrieve input value
                 String apiKey = apiKeyField.getText();
                 setGPTAPIKey(apiKey);
@@ -262,19 +254,18 @@ public class GPTSelection {
                 // Call internal selection parameters
 
                 setSelectionInfo(new NVGenericMap("gpt-api-key").build("gpt-key", apiKey));
+                if (gptAPIKeyUpdater != null)
+                    gptAPIKeyUpdater.accept(apiKey);
 
                 // Close the dialog
                 dialog.dispose();
-            }
+
         });
 
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        cancelButton.addActionListener(e->{
                 // Reset selection to "No OCR"
                 selectionBox.setSelectedIndex(0);
                 dialog.dispose();
-            }
         });
 
         // Assemble the dialog
@@ -307,7 +298,7 @@ public class GPTSelection {
         frame.setSize(200, 75);
 
         // Create an instance of OCRSelectionPanel
-        GPTSelection ocrSelectionPanel = new GPTSelection(frame);
+        GPTSelection ocrSelectionPanel = new GPTSelection(frame, null);
 
         // Add the panel to the frame
         frame.getContentPane().add(ocrSelectionPanel.selectionBox);
@@ -323,5 +314,6 @@ public class GPTSelection {
 
     public void setGPTAPIKey(String gptAPIKey) {
         this.gptAPIKey = gptAPIKey;
+        gptAPIKeyUpdater.accept(gptAPIKey);
     }
 }

@@ -11,7 +11,7 @@
 
 
     <artifactId>org.jc.apps</artifactId>
-    <version>${cd.project.version}</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
 
@@ -68,7 +68,7 @@
         </dependency>
         <dependency>
             <groupId>io.xlogistx</groupId>
-            <artifactId>xlogistx-widget</artifactId>
+            <artifactId>xlogistx-gui-audio</artifactId>
         </dependency>
 
         <dependency>
