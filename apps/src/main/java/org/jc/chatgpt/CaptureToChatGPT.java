@@ -32,7 +32,6 @@ import org.zoxweb.shared.http.HTTPServerConfig;
 import org.zoxweb.shared.util.*;
 
 import javax.imageio.ImageIO;
-import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -109,7 +108,7 @@ public class CaptureToChatGPT extends JFrame {
         try {
             audioRecorder = new AudioRecorder(AudioUtil.defaultAudioFormat(), true);
             TaskUtil.defaultTaskProcessor().execute(audioRecorder);
-        } catch (LineUnavailableException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             audioRecorder = null;
         }
