@@ -65,13 +65,13 @@ public class CaptureToChatGPT extends JFrame {
     private JFileChooser fileChooser;
     private JButton fileChooserButton;
     private JButton stopRecording;
-    private JTextField captureModelName;
+    private DynamicComboBox captureModelDCB;
     private JTextField recordingModelName;
     private JCheckBox autoCopyToClipboardCB;
-
+    private JCheckBox uniqueCaptureCB = null;
     private GPTSelection gptSelection;
     private BufferedImage lastCapture;
-    private DynamicComboBox promptsCB;
+    private DynamicComboBox promptsDCB;
 
     private LedWidget captureLed;
     private final LedWidget audioLed = new LedWidget(30,30, Color.BLACK)
@@ -190,7 +190,7 @@ public class CaptureToChatGPT extends JFrame {
 
         audioButton = new JButton("Audio");
         audioLed.setStatus(AudioRecorder.Status.STOP_RECORDING);
-
+        uniqueCaptureCB = new JCheckBox("UniqueCapture", true);
 
         captureButton = new JButton("Capture");
         startButton = new JButton("Start");
@@ -209,11 +209,13 @@ public class CaptureToChatGPT extends JFrame {
         fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         fileChooserButton = new JButton("Files");
-        captureModelName = new JTextField(10);
-        captureModelName.setText(openAIModel);
+//        captureModelName = new JTextField(10);
+//        captureModelName.setText(openAIModel);
+        captureModelDCB = new DynamicComboBox();
+        captureModelDCB.addItem(openAIModel);
         recordingModelName = new JTextField(10);
         recordingModelName.setText(openAIModel);
-        promptsCB = new DynamicComboBox();
+        promptsDCB = new DynamicComboBox();
         responseFilterTA = GUIUtil.configureTextArea(new JTextArea(), null, null);
 
 
@@ -225,9 +227,10 @@ public class CaptureToChatGPT extends JFrame {
                 captureButton,
                 captureLed,
                 autoCopyToClipboardCB,
+                uniqueCaptureCB,
                 new JLabel("Model"),
-                captureModelName));
-        capturePanel.add(promptsCB);
+                captureModelDCB));
+        capturePanel.add(promptsDCB);
         capturePanel.add(GUIUtil.createScrollPane(responseFilterTA,"Response-Filter", null, null));
         controlPanel.add(capturePanel);
         controlPanel.add(GUIUtil.createPanel("AudioCapture", new FlowLayout(FlowLayout.LEFT),
@@ -467,7 +470,7 @@ public class CaptureToChatGPT extends JFrame {
 
 
             rc.start();
-            if (GUIUtil.compareImages(image, lastCapture)) {
+            if (uniqueCaptureCB.isSelected() && GUIUtil.compareImages(image, lastCapture)) {
                 lastCapture = image;
                 rc.stop();
                 if (log.isEnabled())
@@ -505,14 +508,14 @@ public class CaptureToChatGPT extends JFrame {
                         text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
                         break;
                     case "gpt-api-key":
-                        text = promptsCB.getSelectedItem();//filterPromptPanel.getPromptInputText();
+                        text = promptsDCB.getSelectedItem();//filterPromptPanel.getPromptInputText();
                         break;
                 }
                 prompt = text;
 //                String textToDisplay = prompt;
 //                SwingUtilities.invokeLater(() -> filterPromptPanel.setPromptInputText(textToDisplay));
             } else {
-                prompt = promptsCB.getSelectedItem();
+                prompt = promptsDCB.getSelectedItem();
             }
 
 
@@ -520,7 +523,7 @@ public class CaptureToChatGPT extends JFrame {
             {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
-                String[] models = captureModelName.getText().split(",");
+                String[] models = captureModelDCB.getSelectedItem().split(",");
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
@@ -747,7 +750,7 @@ public class CaptureToChatGPT extends JFrame {
             //openAIApiURL = params.stringValue("gpt-url", true);
             openAIModel = params.stringValue("gpt-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
-            String jsonPromptsFile = params.stringValue("json-prompts", true);
+            String jsonAIConfigFile = params.stringValue("json-ai-config", true);
             String filterContent = null;
             if (jsonFilterFile != null) {
                 try {
@@ -758,11 +761,13 @@ public class CaptureToChatGPT extends JFrame {
                 }
             }
             NVStringList prompts = null;
-            if (jsonPromptsFile != null) {
+            NVStringList models = null;
+            if (jsonAIConfigFile != null) {
                 try {
-                    String jsonPrompts = IOUtil.inputStreamToString(IOUtil.locateFile(jsonPromptsFile));
+                    String jsonPrompts = IOUtil.inputStreamToString(IOUtil.locateFile(jsonAIConfigFile));
                     NVGenericMap nvgmPrompts = GSONUtil.fromJSONDefault(jsonPrompts, NVGenericMap.class);
                     prompts = nvgmPrompts.getNV("prompts");
+                    models = nvgmPrompts.getNV("models");
 
                     log.getLogger().info("Prompts-Content\n" + jsonPrompts);
                 } catch (Exception e) {
@@ -811,6 +816,7 @@ public class CaptureToChatGPT extends JFrame {
             String filterContentConst = filterContent;
             //-----------------------------------------
             NVStringList promptsConst = prompts;
+            NVStringList modelsConst = models;
             SwingUtilities.invokeLater(() -> {
                 appConst.initComponents();
                 if (SUS.isNotEmpty(filterContentConst)) {
@@ -823,7 +829,15 @@ public class CaptureToChatGPT extends JFrame {
                 {
                     for (String prompt: promptsConst.getValue())
                     {
-                        appConst.promptsCB.addItem(prompt);
+                        appConst.promptsDCB.addItem(prompt);
+                    }
+                }
+
+                if(modelsConst != null)
+                {
+                    for (String prompt: modelsConst.getValue())
+                    {
+                        appConst.captureModelDCB.addItem(prompt);
                     }
                 }
             });
@@ -834,7 +848,7 @@ public class CaptureToChatGPT extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
 
-            System.err.println("Usage: cap=[on/off] gpt-key=[oai-api-key] gpt-url=[vision-url] gpt-model=[oai-model] json-filter=[data-filter-file]");
+            System.err.println("Usage: cap=[on/off] gpt-key=[oai-api-key] gpt-url=[vision-url] gpt-model=[oai-model] json-ai-config=[data-filter-file]");
         }
     }
 }
