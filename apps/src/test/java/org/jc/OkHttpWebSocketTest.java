@@ -52,7 +52,7 @@ public class OkHttpWebSocketTest {
                         long delta = System.currentTimeMillis() - ts;
                         rc.register(delta, ai.get());
                         System.out.println(text);
-                        System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000));
+                        System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000) + " msg/sec");
                         System.exit(0);
                     }
                 }
