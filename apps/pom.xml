@@ -76,6 +76,12 @@
             <artifactId>chatgpt</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.glassfish.tyrus.bundles</groupId>
+            <artifactId>tyrus-standalone-client</artifactId>
+            <version>1.18</version>
+        </dependency>
+
     </dependencies>
 
 </project>
