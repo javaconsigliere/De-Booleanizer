@@ -2,22 +2,21 @@ package org.jc;
 
 import org.zoxweb.shared.util.ParamUtil;
 
-import javax.websocket.ClientEndpoint;
-import javax.websocket.ContainerProvider;
-import javax.websocket.OnClose;
-import javax.websocket.OnError;
-import javax.websocket.OnMessage;
-import javax.websocket.OnOpen;
-import javax.websocket.Session;
-import javax.websocket.CloseReason;
-import javax.websocket.WebSocketContainer;
+import javax.websocket.*;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ClientEndpoint
-public class TyrusWSTest {
+public class TyrusWSTest
+extends Endpoint{
 
 
     private static String TOK = "TXT";
@@ -29,22 +28,48 @@ public class TyrusWSTest {
     private static CountDownLatch latch = new CountDownLatch(1);
 
     // Called when the connection is opened
-    @OnOpen
-    public void onOpen(Session session) {
-        System.out.println("Connected to server.");
-        this.userSession = session;
-        // Send a message as soon as the connection is open
-        sendMessage("Hello, server!");
-    }
+//    @OnOpen
+//    public void onOpen(Session session) {
+//        System.out.println("Connected to server.");
+//        this.userSession = session;
+//        // Send a message as soon as the connection is open
+//        sendMessage("Hello, server!");
+//    }
 
     // Called when a message is received from the server
-    @OnMessage
-    public void onMessage(String message) {
-        int val = (message.indexOf(TOK) != -1)  ? counter.getAndIncrement() : counter.get();
-        System.out.println(Thread.currentThread() + " ["+val+"] " + message.length() + " Received message: " + message);
-        // Count down the latch so that main thread can continue if waiting
-        latch.countDown();
+//    @OnMessage
+//    public void onMessage(String message) {
+//        int val = (message.indexOf(TOK) != -1)  ? counter.getAndIncrement() : counter.get();
+//        System.out.println(Thread.currentThread() + " ["+val+"] " + message.length() + " Received message: " + message);
+//        // Count down the latch so that main thread can continue if waiting
+//        latch.countDown();
+//    }
+
+    //@Override
+    @OnOpen
+    public void onOpen(Session session, EndpointConfig endpointConfig) {
+
+        try {
+            session.addMessageHandler(new MessageHandler.Whole<String>() {
+
+                @Override
+                public void onMessage(String message) {
+
+                    int val = (message.indexOf(TOK) != -1)  ? counter.getAndIncrement() : counter.get();
+                    System.out.println(Thread.currentThread() + " ["+val+"] " + message.length() + " Received message: " + message);
+                    // Count down the latch so that main thread can continue if waiting
+                    latch.countDown();
+
+                }
+            });
+            session.getBasicRemote().sendText("heelo");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
+
+
 
     // Called when the connection is closed
     @OnClose
@@ -76,7 +101,7 @@ public class TyrusWSTest {
     public static void main(String[] args) {
 
         String extra = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-2-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-3-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-4-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-5-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ";
-        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
         System.out.println(params);
         String url = params.stringValue("url", false);
@@ -84,10 +109,38 @@ public class TyrusWSTest {
         String password = params.stringValue("password", true);
         int repeat = params.intValue("repeat", 1000);
         System.out.println("Connecting to " + url);
+
+
+        String auth = username + ":" + password;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
+        final String authHeaderValue = "Basic " + encodedAuth;
+
+        // Create a custom configurator to add the Authorization header
+        ClientEndpointConfig.Configurator configurator = new ClientEndpointConfig.Configurator() {
+            @Override
+            public void beforeRequest(Map<String, List<String>> headers) {
+                headers.put("Authorization", Collections.singletonList(authHeaderValue));
+                super.beforeRequest(headers);
+            }
+        };
+
+        // Build the client endpoint configuration with the custom configurator
+        ClientEndpointConfig clientConfig = ClientEndpointConfig.Builder.create()
+                .configurator(configurator)
+                .build();
+
+        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+        // Connect using the custom configuration
+
+
+
         try {
             // Connect to the server using the annotated endpoint.
             // The container creates an instance of TyrusClient and invokes the lifecycle methods.
-            Session session = container.connectToServer(TyrusWSTest.class, URI.create(url));
+
+
+            TyrusWSTest tyrusWSTest = new TyrusWSTest();
+            Session session = container.connectToServer(tyrusWSTest, clientConfig, new URI(url));
 
             // Optionally wait for a message or some condition
             latch.await(10, TimeUnit.SECONDS);
