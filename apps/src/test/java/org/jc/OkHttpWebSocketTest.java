@@ -3,11 +3,13 @@ package org.jc;
 import okhttp3.*;
 import okio.ByteString;
 import org.zoxweb.server.http.OkHTTPCall;
+import org.zoxweb.server.task.TaskUtil;
 import org.zoxweb.shared.http.HTTPMessageConfigInterface;
 import org.zoxweb.shared.util.Const;
 import org.zoxweb.shared.util.ParamUtil;
 import org.zoxweb.shared.util.RateCounter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OkHttpWebSocketTest {
@@ -20,6 +22,8 @@ public class OkHttpWebSocketTest {
         String url = params.stringValue("url", false);
         String username = params.stringValue("user", false);
         String password = params.stringValue("password", false);
+        boolean binary = params.booleanValue("bin", true);
+
         int repeat = params.intValue("repeat", 1000);
 
         // Generate the Basic Authorization header value
@@ -53,14 +57,45 @@ public class OkHttpWebSocketTest {
                         rc.register(delta, ai.get());
                         System.out.println(text);
                         System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000) + " msg/sec");
-                        System.exit(0);
+                        TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS*5, ()->
+                        {
+                            try {
+                                webSocket.close(1000, "finished");
+                                TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS * 5);
+                                System.exit(0);
+                            }
+                            catch (Exception e)
+                            {
+                                e.printStackTrace();
+                            }
+                        });
                     }
                 }
             }
 
             @Override
             public void onMessage(WebSocket webSocket, ByteString bytes) {
-                System.out.println("Received bytes: " + bytes.hex());
+                //System.out.println("Received bytes: " + bytes.string(StandardCharsets.UTF_8));
+                int count = ai.incrementAndGet();
+                //System.out.println(count + " " + text);
+                if (count == repeat) {
+                    long delta = System.currentTimeMillis() - ts;
+                    rc.register(delta, ai.get());
+                    System.out.println(bytes + ": " +bytes.string(StandardCharsets.UTF_8));
+                    System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000) + " msg/sec");
+                    TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS*5, ()->
+                    {
+                        try {
+                            webSocket.close(1000, "finished");
+                            TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS * 5);
+                            System.exit(0);
+                        }
+                        catch (Exception e)
+                        {
+                            e.printStackTrace();
+                        }
+                    });
+                }
             }
 
             @Override
@@ -87,7 +122,10 @@ public class OkHttpWebSocketTest {
         {
             int id = i;
             //TaskUtil.defaultTaskScheduler().execute( ()->ws.send("hello " + id));
-            ws.send("hello " + id);
+            if(binary)
+                ws.send(ByteString.encodeUtf8("hello "));
+            else
+                ws.send((id+1) + " hello");
 
         }
 
