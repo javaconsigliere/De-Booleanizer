@@ -1,11 +1,16 @@
 package org.jc;
 
+import org.glassfish.tyrus.client.ClientProperties;
+import org.glassfish.tyrus.client.SslEngineConfigurator;
+import org.zoxweb.server.net.ssl.SSLCheckDisabler;
 import org.zoxweb.shared.util.ParamUtil;
 
+import javax.net.ssl.SSLContext;
 import javax.websocket.*;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -103,6 +108,7 @@ extends Endpoint{
         String extra = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-2-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-3-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-4-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ-5-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWZYZ";
 
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
+        params.hide("password");
         System.out.println(params);
         String url = params.stringValue("url", false);
         String username = params.stringValue("user", true);
@@ -124,17 +130,25 @@ extends Endpoint{
             }
         };
 
+        try
+        {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, SSLCheckDisabler.SINGLETON.getTrustManagers(), new SecureRandom());
+
         // Build the client endpoint configuration with the custom configurator
         ClientEndpointConfig clientConfig = ClientEndpointConfig.Builder.create()
                 .configurator(configurator)
                 .build();
+
+        clientConfig.getUserProperties().put(ClientProperties.SSL_ENGINE_CONFIGURATOR,
+                new SslEngineConfigurator(sslContext, true, false, false));
 
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
         // Connect using the custom configuration
 
 
 
-        try {
+
             // Connect to the server using the annotated endpoint.
             // The container creates an instance of TyrusClient and invokes the lifecycle methods.
 

@@ -18,6 +18,7 @@ public class OkHttpWebSocketTest {
         OkHttpClient client = OkHTTPCall.createOkHttpBuilder(null, null, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND,false, 10, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND).build();
         //OkHttpClient client = new OkHttpClient();
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
+        params.hide("password");
         System.out.println(params);
         String url = params.stringValue("url", false);
         String username = params.stringValue("user", false);
@@ -38,7 +39,6 @@ public class OkHttpWebSocketTest {
         RateCounter rc = new RateCounter();
         long ts = System.currentTimeMillis();
         AtomicInteger ai = new AtomicInteger();
-
         WebSocketListener listener = new WebSocketListener() {
             @Override
             public void onOpen(WebSocket webSocket, Response response) {
