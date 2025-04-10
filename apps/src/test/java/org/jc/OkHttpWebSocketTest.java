@@ -118,14 +118,14 @@ public class OkHttpWebSocketTest {
         // Establish the WebSocket connection
         WebSocket ws = client.newWebSocket(request, listener);
         //TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*5);
-        for (int i=0; i < repeat; i++)
+        for (int i = 0; i < repeat; i++)
         {
-            int id = i;
-            //TaskUtil.defaultTaskScheduler().execute( ()->ws.send("hello " + id));
+            String message =  i + 1 + " hello";
+            //TaskUtil.defaultTaskScheduler().execute( ()->ws.send(message);
             if(binary)
-                ws.send(ByteString.encodeUtf8("hello "));
+                ws.send(ByteString.encodeUtf8(message));
             else
-                ws.send((id+1) + " hello");
+                ws.send(message);
 
         }
 
