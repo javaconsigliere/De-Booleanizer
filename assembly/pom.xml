@@ -4,14 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.jc</groupId>
+        <groupId>org.jc.ct</groupId>
         <artifactId>code-tester</artifactId>
         <version>1.0.0</version>
     </parent>
 
 
-    <name>code-tester-assembly</name>
-    <artifactId>code-tester-assembly</artifactId>
+    <artifactId>org.jc.assembly</artifactId>
 
 
 
@@ -19,7 +18,7 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>RELEASE</version>
+            <version>${okhttp.version}</version>
         </dependency>
 
         <dependency>
@@ -38,7 +37,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>RELEASE</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

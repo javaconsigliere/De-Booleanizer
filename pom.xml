@@ -6,7 +6,7 @@
 
   <name>code-tester</name>
   <url>http://xlogistx.io</url>
-  <groupId>org.jc</groupId>
+  <groupId>org.jc.ct</groupId>
   <artifactId>code-tester</artifactId>
   <version>1.0.0</version>
   <packaging>pom</packaging>
@@ -94,7 +94,7 @@
 
         <xlogistx.version>1.0.0</xlogistx.version>
         <java-xt-core.version>RELEASE</java-xt-core.version>
-        <squareup.version>RELEASE</squareup.version>
+        <okhttp.version>RELEASE</okhttp.version>
 
 
         <slf4j.version>RELEASE</slf4j.version>
@@ -208,7 +208,7 @@
 
       <dependency>
           <groupId>io.xlogistx.api</groupId>
-          <artifactId>chatgpt</artifactId>
+          <artifactId>xlog-chatgpt</artifactId>
           <version>${xlogistx.version}</version>
       </dependency>
 
@@ -243,12 +243,11 @@
       <artifactId>snakeyaml</artifactId>
       <version>${snakeyaml.version}</version>
 	</dependency>
-
-      <dependency>
+    <dependency>
           <groupId>com.jcraft</groupId>
           <artifactId>jsch</artifactId>
           <version>${jsch.version}</version>
-      </dependency>
+    </dependency>
 
       <dependency>
           <groupId>com.google.jimfs</groupId>
