@@ -10,7 +10,7 @@
     </parent>
 
 
-    <artifactId>org.jc.apps</artifactId>
+    <artifactId>org.jc.ct.apps</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 

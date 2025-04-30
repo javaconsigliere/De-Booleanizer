@@ -10,7 +10,7 @@
     </parent>
 
 
-    <artifactId>org.jc.assembly</artifactId>
+    <artifactId>org.jc.ct.assembly</artifactId>
 
 
 
@@ -22,7 +22,7 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jc</groupId>
+            <groupId>org.jc.ct</groupId>
             <artifactId>org.jc.apps</artifactId>
             <version>${cd.project.version}</version>
         </dependency>
