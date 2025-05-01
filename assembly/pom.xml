@@ -23,8 +23,8 @@
 
         <dependency>
             <groupId>org.jc.ct</groupId>
-            <artifactId>org.jc.apps</artifactId>
-            <version>${cd.project.version}</version>
+            <artifactId>org.jc.ct.apps</artifactId>
+            <version>${proj-version}</version>
         </dependency>
         <dependency>
             <groupId>org.zoxweb</groupId>

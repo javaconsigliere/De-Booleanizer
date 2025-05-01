@@ -63,6 +63,7 @@
         <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
         <maven-javadoc.version>3.4.1</maven-javadoc.version>
         <exec-maven.version>3.1.0</exec-maven.version>
+        <proj-version>1.0.0</proj-version>
 
 
 
@@ -214,17 +215,7 @@
 
 
 
-    <!--<dependency>
-      <groupId>org.jsoup</groupId>
-      <artifactId>jsoup</artifactId>
-      <version>${jsoup.version}</version>
-    </dependency>
-	-->
-    <dependency>
-      <groupId>commons-fileupload</groupId>
-      <artifactId>commons-fileupload</artifactId>
-      <version>${commons-fileupload.version}</version>
-    </dependency>
+
 
     <dependency>
         <groupId>com.sun.mail</groupId>
@@ -238,16 +229,8 @@
       <version>${javax-cache.version}</version>
     </dependency>
 
-	<dependency>
-      <groupId>org.yaml</groupId>
-      <artifactId>snakeyaml</artifactId>
-      <version>${snakeyaml.version}</version>
-	</dependency>
-    <dependency>
-          <groupId>com.jcraft</groupId>
-          <artifactId>jsch</artifactId>
-          <version>${jsch.version}</version>
-    </dependency>
+
+
 
       <dependency>
           <groupId>com.google.jimfs</groupId>
