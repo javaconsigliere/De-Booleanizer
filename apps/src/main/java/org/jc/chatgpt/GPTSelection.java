@@ -15,7 +15,6 @@ public class GPTSelection {
     private final Consumer<String> gptAPIKeyUpdater;
 
 
-
     private String gptAPIKey;
 
     // Constructor
@@ -27,27 +26,26 @@ public class GPTSelection {
 
     private void initializeComponents() {
         // Create the selection box with three entries
-        String[] options = { "No OCR", "Local OCR", "Remote OCR", "GPT API Key" };
+        String[] options = {"No OCR", "Local OCR", "Remote OCR", "GPT API Key"};
         selectionBox = new JComboBox<>(options);
 
         // Set default selection to "No OCR"
         selectionBox.setSelectedIndex(0);
 
         // Add an action listener to handle selection changes
-        selectionBox.addActionListener(e->{
+        selectionBox.addActionListener(e -> {
 
-                String selectedOption = (String) selectionBox.getSelectedItem();
-                if ("Local OCR".equals(selectedOption)) {
-                    showLocalOCRDialog();
-                } else if ("Remote OCR".equals(selectedOption)) {
-                    showRemoteOCRDialog();
-                } else if ("GPT API Key".equals(selectedOption)) {
-                    showGPTAPIKey();
-                }
-                else {
-                    // No OCR selected, call internal selection parameters
-                    setSelectionInfo(null);
-                }
+            String selectedOption = (String) selectionBox.getSelectedItem();
+            if ("Local OCR".equals(selectedOption)) {
+                showLocalOCRDialog();
+            } else if ("Remote OCR".equals(selectedOption)) {
+                showRemoteOCRDialog();
+            } else if ("GPT API Key".equals(selectedOption)) {
+                showGPTAPIKey();
+            } else {
+                // No OCR selected, call internal selection parameters
+                setSelectionInfo(null);
+            }
 
         });
 
@@ -71,7 +69,7 @@ public class GPTSelection {
         // Set up the layout
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5,5,5,5);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
         // Add components to the panel
@@ -95,28 +93,28 @@ public class GPTSelection {
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(e->{
+        setButton.addActionListener(e -> {
 
-                // Retrieve input values
-                String path = pathField.getText();
-                String language = languageField.getText();
+            // Retrieve input values
+            String path = pathField.getText();
+            String language = languageField.getText();
 
-                // Perform validation if necessary
-                // ...
+            // Perform validation if necessary
+            // ...
 
-                // Call internal selection parameters
-                setSelectionInfo(new NVGenericMap("local-ocr").build("path", path).build("language", language));
+            // Call internal selection parameters
+            setSelectionInfo(new NVGenericMap("local-ocr").build("path", path).build("language", language));
 
-                // Close the dialog
-                dialog.dispose();
+            // Close the dialog
+            dialog.dispose();
 
         });
 
-        cancelButton.addActionListener(e-> {
+        cancelButton.addActionListener(e -> {
 
-                // Reset selection to "No OCR"
-                selectionBox.setSelectedIndex(0);
-                dialog.dispose();
+            // Reset selection to "No OCR"
+            selectionBox.setSelectedIndex(0);
+            dialog.dispose();
 
         });
 
@@ -146,7 +144,7 @@ public class GPTSelection {
         // Set up the layout
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5,5,5,5);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
         // Add components to the panel
@@ -171,26 +169,26 @@ public class GPTSelection {
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(e->{
+        setButton.addActionListener(e -> {
 
-                // Retrieve input value
-                String apiKey = apiKeyField.getText();
+            // Retrieve input value
+            String apiKey = apiKeyField.getText();
 
-                // Perform validation if necessary
-                // ...
+            // Perform validation if necessary
+            // ...
 
-                // Call internal selection parameters
+            // Call internal selection parameters
 
-                setSelectionInfo(new NVGenericMap("remote-ocr").build("api-key", apiKey).build("image-format", imageFormat.getText()));
+            setSelectionInfo(new NVGenericMap("remote-ocr").build("api-key", apiKey).build("image-format", imageFormat.getText()));
 
-                // Close the dialog
-                dialog.dispose();
+            // Close the dialog
+            dialog.dispose();
         });
 
-        cancelButton.addActionListener(e-> {
-                // Reset selection to "No OCR"
-                selectionBox.setSelectedIndex(0);
-                dialog.dispose();
+        cancelButton.addActionListener(e -> {
+            // Reset selection to "No OCR"
+            selectionBox.setSelectedIndex(0);
+            dialog.dispose();
         });
 
         // Assemble the dialog
@@ -219,7 +217,7 @@ public class GPTSelection {
         // Set up the layout
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5,5,5,5);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
         // Add components to the panel
@@ -234,38 +232,36 @@ public class GPTSelection {
         gbc.gridy = 1;
 
 
-
-
         // Buttons panel
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonsPanel.add(setButton);
         buttonsPanel.add(cancelButton);
 
         // Add action listeners for buttons
-        setButton.addActionListener(e->
+        setButton.addActionListener(e ->
         {
-                // Retrieve input value
-                String apiKey = apiKeyField.getText();
-                setGPTAPIKey(apiKey);
+            // Retrieve input value
+            String apiKey = apiKeyField.getText();
+            setGPTAPIKey(apiKey);
 
-                // Perform validation if necessary
-                // ...
+            // Perform validation if necessary
+            // ...
 
-                // Call internal selection parameters
+            // Call internal selection parameters
 
-                setSelectionInfo(new NVGenericMap("gpt-api-key").build("gpt-key", apiKey));
-                if (gptAPIKeyUpdater != null)
-                    gptAPIKeyUpdater.accept(apiKey);
+            setSelectionInfo(new NVGenericMap("gpt-api-key").build("gpt-key", apiKey));
+            if (gptAPIKeyUpdater != null)
+                gptAPIKeyUpdater.accept(apiKey);
 
-                // Close the dialog
-                dialog.dispose();
+            // Close the dialog
+            dialog.dispose();
 
         });
 
-        cancelButton.addActionListener(e->{
-                // Reset selection to "No OCR"
-                selectionBox.setSelectedIndex(0);
-                dialog.dispose();
+        cancelButton.addActionListener(e -> {
+            // Reset selection to "No OCR"
+            selectionBox.setSelectedIndex(0);
+            dialog.dispose();
         });
 
         // Assemble the dialog
@@ -285,8 +281,7 @@ public class GPTSelection {
     }
 
 
-    public NVGenericMap getSelectionInfo()
-    {
+    public NVGenericMap getSelectionInfo() {
         return selectionInfo;
     }
 

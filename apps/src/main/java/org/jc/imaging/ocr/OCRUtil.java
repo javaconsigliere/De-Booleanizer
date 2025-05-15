@@ -16,12 +16,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class OCRUtil {
     private static final Lock lock = new ReentrantLock();
     private final Tesseract tesseract = new Tesseract();
-    public static final OCRUtil SINGLETON  = new OCRUtil();
+    public static final OCRUtil SINGLETON = new OCRUtil();
     private String lastResult;
 
 
-    private OCRUtil()
-    {
+    private OCRUtil() {
 
     }
 
@@ -84,52 +83,44 @@ public class OCRUtil {
 //
 //
 //
-////        int counter = 0;
-////        // Wait until the user has made a selection
-////        while (!selectionWindow.isSelectionMade() && counter < 50) {
-////            //counter++;
-////            //System.out.println("Sleeping: " + counter);
-////            Thread.sleep(100);
-////        }
+
+    /// /        int counter = 0;
+    /// /        // Wait until the user has made a selection
+    /// /        while (!selectionWindow.isSelectionMade() && counter < 50) {
+    /// /            //counter++;
+    /// /            //System.out.println("Sleeping: " + counter);
+    /// /            Thread.sleep(100);
+    /// /        }
 //
 //        selectionWindow.dispose();
 //
 //        // Get the selected area
 //        return selectionWindow.getSelectedArea();
 //    }
-
-
-
-    public  String tesseractOCRImage(String tesserActPath, String lang, BufferedImage image)
-            throws TesseractException
-    {
+    public String tesseractOCRImage(String tesserActPath, String lang, BufferedImage image)
+            throws TesseractException {
         return tesseractOCRImage(tesserActPath, lang, image, null);
     }
 
-    public  String tesseractOCRImage(String tesserActPath, String lang, BufferedImage image, BufferedImage oldImage)
-            throws TesseractException
-    {
+    public String tesseractOCRImage(String tesserActPath, String lang, BufferedImage image, BufferedImage oldImage)
+            throws TesseractException {
         SharedUtil.checkIfNulls("Null parameters", tesserActPath, lang, image);
 
-        if (oldImage != null)
-        {
+        if (oldImage != null) {
             // compare the 2 images
 
             boolean result = GUIUtil.compareImages(image, oldImage);
-            if(result )
+            if (result)
                 return lastResult;
         }
         lock.lock();
         String ret;
-        try
-        {
+        try {
             tesseract.setDatapath(tesserActPath);
             tesseract.setLanguage(lang);
             ret = tesseract.doOCR(image);
             lastResult = lastResult;
-        }
-        finally
-        {
+        } finally {
             lock.unlock();
 
         }
@@ -137,11 +128,10 @@ public class OCRUtil {
     }
 
 
-
     public static void main(String[] args) {
         // Path to the image file
         int index = 0;
-       // Update with your image path
+        // Update with your image path
 
         // Create a Tesseract instance
         //Tesseract tesseract = new Tesseract();

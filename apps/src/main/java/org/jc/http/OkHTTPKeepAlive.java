@@ -22,12 +22,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class OkHTTPKeepAlive {
 
 
-
-
-
-
-
-
     public static OkHttpClient getUnsafeOkHttpClient(ExecutorService executorService, int connectionPool, long kaTimeoutMillis) {
         try {
             // Create a trust manager that does not validate certificate chains
@@ -41,7 +35,7 @@ public class OkHTTPKeepAlive {
             builder.connectTimeout(20, TimeUnit.SECONDS);
             builder.readTimeout(20, TimeUnit.SECONDS);
             builder.writeTimeout(20, TimeUnit.SECONDS);
-            if(connectionPool>0)
+            if (connectionPool > 0)
                 builder.connectionPool(new ConnectionPool(connectionPool, kaTimeoutMillis, TimeUnit.MILLISECONDS));
             builder.dispatcher(new Dispatcher(executorService));
             //builder.connectionPool(new ConnectionPool(10, 10, TimeUnit.SECONDS));
@@ -52,15 +46,14 @@ public class OkHTTPKeepAlive {
     }
 
 
-    public static void testExpiredKeepAlive(OkHttpClient client, String url, String user, String password)
-    {
+    public static void testExpiredKeepAlive(OkHttpClient client, String url, String user, String password) {
 
         GetNameValue<String> auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
 
         System.out.println(auth);
         // First request
         Request first = new Request.Builder()
-                .url(url+"/sleep-test/1s")
+                .url(url + "/sleep-test/1s")
                 .header(auth.getName(), auth.getValue())
 
                 .header(HTTPHeader.CONNECTION.getName(), "keep-alive")
@@ -68,7 +61,7 @@ public class OkHTTPKeepAlive {
 
 
         Request second = new Request.Builder()
-                .url(url+"/sleep-test/8s")
+                .url(url + "/sleep-test/8s")
                 .get()
 
                 .header(HTTPHeader.CONNECTION.getName(), "keep-alive")
@@ -76,31 +69,21 @@ public class OkHTTPKeepAlive {
                 .build();
 
 
-        try (Response response = client.newCall(first).execute())
-        {
-            if (response.isSuccessful())
-            {
+        try (Response response = client.newCall(first).execute()) {
+            if (response.isSuccessful()) {
                 System.out.println("First " + response.body().string() + " " + response.headers());
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        try (Response response = client.newCall(second).execute())
-        {
-            if (response.isSuccessful())
-            {
+        try (Response response = client.newCall(second).execute()) {
+            if (response.isSuccessful()) {
                 System.out.println("second " + response.body().string() + " " + response.headers());
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-
 
 
     }
@@ -112,10 +95,6 @@ public class OkHTTPKeepAlive {
 ////                .sslSocketFactory(SSLCheckDisabler.SINGLETON.getSSLFactory(), (X509TrustManager) SSLCheckDisabler.SINGLETON.getTrustManagers()[0])
 ////                .hostnameVerifier(SSLCheckDisabler.SINGLETON.getHostnameVerifier())
 //                .build();
-
-
-
-
 
 
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
@@ -131,7 +110,7 @@ public class OkHTTPKeepAlive {
         long kaTimeout = Const.TimeInMillis.toMillis(params.stringValue("kato", "5s"));
         System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive);
         GetNameValue<String> auth = null;
-        if(user != null && password != null)
+        if (user != null && password != null)
             auth = HTTPAuthScheme.BASIC.toHTTPHeader(user, password);
 
         ExecutorService executorService = javaes ? Executors.newCachedThreadPool() : TaskUtil.defaultTaskProcessor();
@@ -144,7 +123,7 @@ public class OkHTTPKeepAlive {
                     .get()
 
                     .header(HTTPHeader.CONNECTION.getName(), keepAlive ? "keep-alive" : "close");
-            if(auth != null)
+            if (auth != null)
                 requestBuilder.header(auth.getName(), auth.getValue());
 
             Request request = requestBuilder.build();
@@ -157,43 +136,40 @@ public class OkHTTPKeepAlive {
             int kaCounter = 0;
 
             // test keep alive on request
-            do
-            {
-               try (Response response = client.newCall(request).execute()) {
-                   if (response.isSuccessful()) {
-                       String body =  response.body().string();
-                       System.out.println( (body.length() > 1024 ? " body length " + body.length() : body) + " " +
-                               response.headers());
-                       String keepAliveHeader = response.headers().get("Keep-Alive");
+            do {
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        String body = response.body().string();
+                        System.out.println((body.length() > 1024 ? " body length " + body.length() : body) + " " +
+                                response.headers());
+                        String keepAliveHeader = response.headers().get("Keep-Alive");
 
-                       if(keepAliveHeader != null) {
-                           String[] result = response.headers().get("Keep-Alive").split("[, ;]");
-                           ParamUtil.ParamMap nvs = ParamUtil.parse("=", result);
-                           maxLeft = nvs.intValue("max", 0);
-                           System.out.println("repeat=" + maxLeft + " Keep-Alive: " +keepAliveHeader);
-                       }
-                       else
-                           maxLeft = 0;
-                   } else {
-                       System.out.println("First request failed: " + response.headers());
-                   }
-                   System.out.println("**************************************************************************");
-                   kaCounter++;
-               }
-            }while(maxLeft > 0);
+                        if (keepAliveHeader != null) {
+                            String[] result = response.headers().get("Keep-Alive").split("[, ;]");
+                            ParamUtil.ParamMap nvs = ParamUtil.parse("=", result);
+                            maxLeft = nvs.intValue("max", 0);
+                            System.out.println("repeat=" + maxLeft + " Keep-Alive: " + keepAliveHeader);
+                        } else
+                            maxLeft = 0;
+                    } else {
+                        System.out.println("First request failed: " + response.headers());
+                    }
+                    System.out.println("**************************************************************************");
+                    kaCounter++;
+                }
+            } while (maxLeft > 0);
             System.out.println("keep alive counter: " + kaCounter);
 
 
             AtomicLong execCounter = new AtomicLong();
-            if(!async) {
+            if (!async) {
                 long delta = System.currentTimeMillis();
                 for (counter = 0; counter < repeat; counter++) {
                     executorService.execute(() -> {
                         try (Response response = client.newCall(request).execute()) {
                             if (!response.isSuccessful() || response.code() != 200) {
                                 System.out.println("First request failed: " + response.message());
-                            }
-                            else
+                            } else
                                 execCounter.incrementAndGet();
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -209,8 +185,7 @@ public class OkHTTPKeepAlive {
 
                 System.out.println("Params " + url + " repeat: " + repeat + " Keep-Alive: " + keepAlive + " connection count: " + client.connectionPool().connectionCount());
                 System.out.println("Sync total sent: " + counter + " total executed " + execCounter.get() + " it took: " + Const.TimeInMillis.toString(delta) + " rate: " + rc.rate(Const.TimeInMillis.SECOND.MILLIS));
-            }
-            else {
+            } else {
 
                 long delta = System.currentTimeMillis();
                 for (counter = 0; counter < repeat; counter++) {
@@ -239,10 +214,7 @@ public class OkHTTPKeepAlive {
             }
 
 
-
-
-
-           // TaskUtil.waitIfBusyThenClose(50);
+            // TaskUtil.waitIfBusyThenClose(50);
 
 
         } catch (IOException e) {
