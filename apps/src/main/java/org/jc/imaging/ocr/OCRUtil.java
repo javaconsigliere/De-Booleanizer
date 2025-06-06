@@ -4,7 +4,7 @@ package org.jc.imaging.ocr;
 import io.xlogistx.gui.GUIUtil;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.zoxweb.shared.util.SharedUtil;
+import org.zoxweb.shared.util.SUS;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -104,7 +104,7 @@ public class OCRUtil {
 
     public String tesseractOCRImage(String tesserActPath, String lang, BufferedImage image, BufferedImage oldImage)
             throws TesseractException {
-        SharedUtil.checkIfNulls("Null parameters", tesserActPath, lang, image);
+        SUS.checkIfNulls("Null parameters", tesserActPath, lang, image);
 
         if (oldImage != null) {
             // compare the 2 images
