@@ -76,7 +76,7 @@
         <ehcache-org.version>3.9.11</ehcache-org.version>
         <gson.version>RELEASE</gson.version>
         <javax-cache.version>1.1.1</javax-cache.version>
-        <jakarta-mail.version>2.0.1</jakarta-mail.version>
+      <angus.version>2.0.3</angus.version>
         <javax-servlet.version>4.0.1</javax-servlet.version>
         <jsoup.version>1.19.1</jsoup.version>
         <snakeyaml.version>RELEASE</snakeyaml.version>
@@ -95,7 +95,7 @@
 
         <xlogistx.version>1.0.0</xlogistx.version>
         <java-xt-core.version>RELEASE</java-xt-core.version>
-        <okhttp.version>RELEASE</okhttp.version>
+      <okhttp.version>4.12.0</okhttp.version>
 
 
         <slf4j.version>RELEASE</slf4j.version>
@@ -217,12 +217,12 @@
 
 
 
-    <dependency>
-        <groupId>com.sun.mail</groupId>
-        <artifactId>jakarta.mail</artifactId>
-      <version>${jakarta-mail.version}</version>
-    </dependency>
-
+      <dependency>
+          <groupId>org.eclipse.angus</groupId>
+          <artifactId>angus-mail</artifactId>
+          <version>${angus.version}</version>
+          <!--      <scope>runtime</scope>-->
+      </dependency>
     <dependency>
       <groupId>javax.cache</groupId>
       <artifactId>cache-api</artifactId>
