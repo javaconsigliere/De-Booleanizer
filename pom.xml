@@ -1,54 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <name>code-tester</name>
-    <url>http://xlogistx.io</url>
-    <groupId>org.jc.ct</groupId>
-    <artifactId>code-tester</artifactId>
-    <version>1.0.0</version>
-    <packaging>pom</packaging>
+  <name>code-tester</name>
+  <url>http://xlogistx.io</url>
+  <groupId>org.jc.ct</groupId>
+  <artifactId>code-tester</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
 
+  
+ <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
 
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        </license>
-    </licenses>
+   <scm>
+    <url>https://github.com/fidusio/io-xlogistx.git</url>
+    <connection>scm:git:git://github.com/fidusio/io-xlogistx.git</connection>
+    <developerConnection>scm:git:git://github.com/fidusio/io-xlogistx.git</developerConnection>
+  </scm>
+  
+  <developers>
+    <developer>
+      <id>javaconsigliere</id>
+      <name>Java Consigliere</name>
+      <email>javaconsigliere@gmail.com</email>
+      <url>http://xlogistx.io</url>
+      <organization>XlogistX.IO</organization>
+      <organizationUrl>http://xlogistx.io</organizationUrl>
+      <roles>
+        <role>architect</role>
+        <role>developer</role>
+      </roles>
+      <timezone>America/Los_Angeles</timezone>
+    </developer>
+  </developers>
 
-    <scm>
-        <url>https://github.com/fidusio/io-xlogistx.git</url>
-        <connection>scm:git:git://github.com/fidusio/io-xlogistx.git</connection>
-        <developerConnection>scm:git:git://github.com/fidusio/io-xlogistx.git</developerConnection>
-    </scm>
-
-    <developers>
-        <developer>
-            <id>javaconsigliere</id>
-            <name>Java Consigliere</name>
-            <email>javaconsigliere@gmail.com</email>
-            <url>http://xlogistx.io</url>
-            <organization>XlogistX.IO</organization>
-            <organizationUrl>http://xlogistx.io</organizationUrl>
-            <roles>
-                <role>architect</role>
-                <role>developer</role>
-            </roles>
-            <timezone>America/Los_Angeles</timezone>
-        </developer>
-    </developers>
-
-    <modules>
-        <module>apps</module>
-        <module>assembly</module>
-    </modules>
-
-
-    <!-- Version definition -->
-    <properties>
+  <modules>
+      <module>apps</module>
+      <module>assembly</module>
+  </modules>
+  
+  
+  <!-- Version definition -->
+  <properties>
         <skipTests>true</skipTests>
 
         <cd.project.version>1.0.0</cd.project.version>
@@ -66,6 +66,7 @@
         <proj-version>1.0.0</proj-version>
 
 
+
         <commons-logging.version>RELEASE</commons-logging.version>
         <commons-beanutils.version>RELEASE</commons-beanutils.version>
         <commons-codec.version>RELEASE</commons-codec.version>
@@ -75,7 +76,7 @@
         <ehcache-org.version>3.9.11</ehcache-org.version>
         <gson.version>RELEASE</gson.version>
         <javax-cache.version>1.1.1</javax-cache.version>
-
+        <jakarta-mail.version>2.0.1</jakarta-mail.version>
         <javax-servlet.version>4.0.1</javax-servlet.version>
         <jsoup.version>1.19.1</jsoup.version>
         <snakeyaml.version>RELEASE</snakeyaml.version>
@@ -91,166 +92,174 @@
         <javax-servlet.version>4.0.1</javax-servlet.version>
 
         <zoxweb-core.version>2.3.8</zoxweb-core.version>
-        <angus.version>2.0.3</angus.version>
+
         <xlogistx.version>1.0.0</xlogistx.version>
         <java-xt-core.version>RELEASE</java-xt-core.version>
-        <okhttp.version>4.12.0</okhttp.version>
+        <okhttp.version>RELEASE</okhttp.version>
 
 
         <slf4j.version>RELEASE</slf4j.version>
 
 
+
         <cron-util.version>RELEASE</cron-util.version>
-    </properties>
+  </properties>
 
-    <build>
-        <directory>target</directory>
-        <resources>
-            <resource>
-                <directory>src/main/java/</directory>
-            </resource>
-            <resource>
-                <directory>src/main/resources/</directory>
-            </resource>
-        </resources>
+  <build>
+  <directory>target</directory>
+   <resources>
+      <resource>
+        <directory>src/main/java/</directory>
+      </resource>
+      <resource>
+        <directory>src/main/resources/</directory>
+      </resource>
+    </resources>
 
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
-                </configuration>
+	<plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+              <source>${jdk.version}</source>
+              <target>${jdk.version}</target>
+          </configuration>
 
-            </plugin>
+      </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-                <configuration>
-                    <skipTests>${skipTests}</skipTests>
-                </configuration>
-            </plugin>
-
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>${maven-resources-plugin.version}</version>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>${maven-plugin-source.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-        </plugins>
-    </build>
-    <dependencyManagement>
-        <dependencies>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <skipTests>${skipTests}</skipTests>
+        </configuration>
+      </plugin>
 
 
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-params</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
 
-            <dependency>
-                <groupId>org.zoxweb</groupId>
-                <artifactId>zoxweb-core</artifactId>
-                <version>${zoxweb-core.version}</version>
-            </dependency>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${maven-resources-plugin.version}</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
 
-            <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>${gson.version}</version>
-            </dependency>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>${maven-plugin-source.version}</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
-
-            <dependency>
-                <groupId>javax.websocket</groupId>
-                <artifactId>javax.websocket-api</artifactId>
-                <version>${websocket.version}</version>
-            </dependency>
-
-
-            <dependency>
-                <groupId>io.xlogistx</groupId>
-                <artifactId>xlogistx-http</artifactId>
-                <version>${xlogistx.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.xlogistx</groupId>
-                <artifactId>xlogistx-gui-audio</artifactId>
-                <version>${xlogistx.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.xlogistx.api</groupId>
-                <artifactId>xlog-chatgpt</artifactId>
-                <version>${xlogistx.version}</version>
-            </dependency>
+    </plugins>
+  </build>
+  <dependencyManagement>
+  <dependencies>
 
 
-            <dependency>
-                <groupId>org.eclipse.angus</groupId>
-                <artifactId>angus-mail</artifactId>
-                <version>${angus.version}</version>
-            </dependency>
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter-params</artifactId>
+          <version>${junit.version}</version>
+          <scope>test</scope>
+      </dependency>
+	
+	<dependency>
+	  <groupId>org.zoxweb</groupId>
+	  <artifactId>zoxweb-core</artifactId>
+	  <version>${zoxweb-core.version}</version>
+	</dependency>
+
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+    </dependency>
+
+	
+    <dependency>
+      <groupId>javax.websocket</groupId>
+      <artifactId>javax.websocket-api</artifactId>
+      <version>${websocket.version}</version>
+    </dependency>
 
 
-            <dependency>
-                <groupId>javax.cache</groupId>
-                <artifactId>cache-api</artifactId>
-                <version>${javax-cache.version}</version>
-            </dependency>
+    <dependency>
+      <groupId>io.xlogistx</groupId>
+      <artifactId>xlogistx-http</artifactId>
+      <version>${xlogistx.version}</version>
+    </dependency>
+
+      <dependency>
+          <groupId>io.xlogistx</groupId>
+          <artifactId>xlogistx-gui-audio</artifactId>
+          <version>${xlogistx.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>io.xlogistx.api</groupId>
+          <artifactId>xlog-chatgpt</artifactId>
+          <version>${xlogistx.version}</version>
+      </dependency>
 
 
-            <dependency>
-                <groupId>com.google.jimfs</groupId>
-                <artifactId>jimfs</artifactId>
-                <version>${jimfs.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>net.sourceforge.tess4j</groupId>
-                <artifactId>tess4j</artifactId>
-                <version>${tess4j.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>net.java.dev.jna</groupId>
-                <artifactId>jna</artifactId>
-                <version>RELEASE</version>
-            </dependency>
-
-            <dependency>
-                <groupId>net.java.dev.jna</groupId>
-                <artifactId>jna-platform</artifactId>
-                <version>RELEASE</version>
-            </dependency>
 
 
-        </dependencies>
-    </dependencyManagement>
+
+    <dependency>
+        <groupId>com.sun.mail</groupId>
+        <artifactId>jakarta.mail</artifactId>
+      <version>${jakarta-mail.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.cache</groupId>
+      <artifactId>cache-api</artifactId>
+      <version>${javax-cache.version}</version>
+    </dependency>
+
+
+
+
+      <dependency>
+          <groupId>com.google.jimfs</groupId>
+          <artifactId>jimfs</artifactId>
+          <version>${jimfs.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>net.sourceforge.tess4j</groupId>
+          <artifactId>tess4j</artifactId>
+          <version>${tess4j.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna</artifactId>
+          <version>RELEASE</version>
+      </dependency>
+
+      <dependency>
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna-platform</artifactId>
+          <version>RELEASE</version>
+      </dependency>
+
+
+
+
+  </dependencies>
+  </dependencyManagement>
 
 </project>
