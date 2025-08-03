@@ -355,7 +355,8 @@ public class CaptureToChatGPT extends JFrame {
                         //audioRecorder.setStatus(AudioRecorder.Status.STOP_RECORDING);
                         try {
                             InputStream recordedData = audioRecorder.getRecordedStream();
-                            if (log.isEnabled()) log.getLogger().info("is: " + recordedData);
+                            if(recordedData != null)
+                                if (log.isEnabled()) log.getLogger().info("is: " + Const.SizeInBytes.K.convertBytesDouble(recordedData.available()) + " " + Const.SizeInBytes.K.getName());
                             if (recordedData != null) {
                                 // send to chatgpt transcribe
 
@@ -370,6 +371,7 @@ public class CaptureToChatGPT extends JFrame {
 //                                NVGenericMap response = gptAPI.syncCall(GTPAPIBuilder.Command.TRANSCRIBE, audioClip);
 //                                String toDisplay = response.getValue("text");
                                 String response = gptAPI.transcribe(recordedData, "AudioClip.wav");
+                                if(log.isEnabled()) log.getLogger().info("transcribe: " + response);
                                 final String toDisplay = response;
                                 SwingUtilities.invokeLater(() -> audioTextArea.setText(toDisplay));
 

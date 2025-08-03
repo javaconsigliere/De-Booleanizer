@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class OkHttpWebSocketTest {
 
     public static void main(String[] args) {
-        OkHttpClient client = OkHTTPCall.createOkHttpBuilder(null, null, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND,false, 10, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND).build();
+
         //OkHttpClient client = new OkHttpClient();
         ParamUtil.ParamMap params = ParamUtil.parse("=", args);
         params.hide("password");
@@ -24,6 +24,8 @@ public class OkHttpWebSocketTest {
         String username = params.stringValue("user", false);
         String password = params.stringValue("password", false);
         boolean binary = params.booleanValue("bin", true);
+        boolean sslCheck = params.booleanValue("ssl-check", true);
+        OkHttpClient client = OkHTTPCall.createOkHttpBuilder(null, null, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND, sslCheck, 10, HTTPMessageConfigInterface.DEFAULT_TIMEOUT_20_SECOND).build();
 
         int repeat = params.intValue("repeat", 1000);
 
@@ -57,15 +59,13 @@ public class OkHttpWebSocketTest {
                         rc.register(delta, ai.get());
                         System.out.println(text);
                         System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000) + " msg/sec");
-                        TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS*5, ()->
+                        TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS * 5, () ->
                         {
                             try {
                                 webSocket.close(1000, "finished");
                                 TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS * 5);
                                 System.exit(0);
-                            }
-                            catch (Exception e)
-                            {
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         });
@@ -81,17 +81,15 @@ public class OkHttpWebSocketTest {
                 if (count == repeat) {
                     long delta = System.currentTimeMillis() - ts;
                     rc.register(delta, ai.get());
-                    System.out.println(bytes + ": " +bytes.string(StandardCharsets.UTF_8));
+                    System.out.println(bytes + ": " + bytes.string(StandardCharsets.UTF_8));
                     System.out.println(ai.get() + "  " + Const.TimeInMillis.toString(delta) + " " + rc.rate(1000) + " msg/sec");
-                    TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS*5, ()->
+                    TaskUtil.defaultTaskScheduler().queue(Const.TimeInMillis.SECOND.MILLIS * 5, () ->
                     {
                         try {
                             webSocket.close(1000, "finished");
                             TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS * 5);
                             System.exit(0);
-                        }
-                        catch (Exception e)
-                        {
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                     });
@@ -111,18 +109,17 @@ public class OkHttpWebSocketTest {
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                System.err.println("WebSocket error: " + t.getMessage());
+                System.err.println("WebSocket error: " + t);
             }
         };
 
         // Establish the WebSocket connection
         WebSocket ws = client.newWebSocket(request, listener);
         //TaskUtil.sleep(Const.TimeInMillis.SECOND.MILLIS*5);
-        for (int i = 0; i < repeat; i++)
-        {
-            String message =  i + 1 + " hello";
+        for (int i = 0; i < repeat; i++) {
+            String message = i + 1 + " hello";
             //TaskUtil.defaultTaskScheduler().execute( ()->ws.send(message);
-            if(binary)
+            if (binary)
                 ws.send(ByteString.encodeUtf8(message));
             else
                 ws.send(message);
