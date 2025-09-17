@@ -9,7 +9,8 @@ Make sure you have jre 11+ installed on your system.\
 Get [jar-loader.jar](https://xlogistx.io/apps/jar-loader.jar)\
 Get [de-booleanizer.jar](https://xlogistx.io/apps/de-booleanizer.jar)
 
-Then type java -jar [jar-loader.jar](https://xlogistx.io/apps/jar-loader.jar) -jar [de-booleanizer.jar](https://xlogistx.io/apps/de-booleanizer.jar) cap=yes json-filter=**filter.json** json-ai-config=**ai-config.json**  gpt-key=**[chat gtp api key]**
+Then type\
+java -jar [jar-loader.jar](https://xlogistx.io/apps/jar-loader.jar) -jar [de-booleanizer.jar](https://xlogistx.io/apps/de-booleanizer.jar) cap=yes json-filter=**filter.json** json-ai-config=**ai-config.json**  gpt-key=**[chat gtp api key]**
 
 **filter.json**
 ```json
