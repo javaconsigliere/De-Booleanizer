@@ -4,10 +4,10 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <name>code-tester</name>
+  <name>de-booleanizer</name>
   <url>http://xlogistx.io</url>
   <groupId>org.jc</groupId>
-  <artifactId>code-tester</artifactId>
+  <artifactId>de-booleanizer</artifactId>
   <version>1.0.0</version>
   <packaging>pom</packaging>
 

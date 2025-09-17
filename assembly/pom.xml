@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.jc</groupId>
-        <artifactId>code-tester</artifactId>
+        <artifactId>de-booleanizer</artifactId>
         <version>1.0.0</version>
     </parent>
 
