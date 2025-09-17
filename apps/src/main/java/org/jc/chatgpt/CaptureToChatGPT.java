@@ -84,7 +84,7 @@ public class CaptureToChatGPT extends JFrame {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 120, true, 10, 120).build();
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 180, true, 10, 180).build();
 
 
     static private Rectangle selectedArea;

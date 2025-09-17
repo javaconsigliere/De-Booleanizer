@@ -95,7 +95,7 @@
 
         <xlogistx.version>1.0.0</xlogistx.version>
         <java-xt-core.version>RELEASE</java-xt-core.version>
-        <okhttp.version>4.12.0</okhttp.version>
+<!--        <okhttp.version>4.12.0</okhttp.version>-->
 
 
         <slf4j.version>RELEASE</slf4j.version>

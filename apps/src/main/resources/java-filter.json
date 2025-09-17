@@ -3,6 +3,6 @@
   "description": "Get text between prefix{}postfix",
   "type": "BETWEEN",
   "extension" : "java",
-  "prefix": "```java",
+  "prefix": "```code",
   "postfix": "```"
 }

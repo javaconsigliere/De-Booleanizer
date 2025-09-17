@@ -1,11 +1,13 @@
 {
   "prompts": [
-    "Analyse the image and provide an optimized solution. Take wrong answer into consideration also validate any given examples.",
-    "Analyze the image and generate an accurate prompt that will be consumed by an LLM"
+    "Analyze the image and generate an accurate prompt that will be consumed by an LLM",
+    "Analyse the image and provide an optimized solution. Provide code solution between ```code and ``` "
+
   ],
   "models": [
-    "gpt-4.1",
-    "gpt-4.1-mini",
-    "gpt-4.1-mini,gpt-4.1"
+    "gpt-5-nano,gpt-5",
+    "gpt-5-nano",
+    "gpt-5",
+    "gpt-5-mini"
   ]
 }
