@@ -100,7 +100,7 @@ public class ZeDebooleanizer extends JFrame {
     private Future<?> future = null;
 
     public ZeDebooleanizer() {
-        setTitle("Screen OCR ChatGPT Application");
+        setTitle("Ze-DeBooleanizer App");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
