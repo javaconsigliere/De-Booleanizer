@@ -1,5 +1,4 @@
-#  Ze-Debooleanizer
+#  Ze-DeBooleanizer
 ![Logo](https://xlogistx.io/articles/de-booleanizer/ZeDebooleanizer.JPG)
 
-DeBouleanizer is java application that uses ChatGPT to process 
-images analysis and voice processing 
+DeBouleanizer is java application that uses ChatGPT to analysis images and voice token processing.
