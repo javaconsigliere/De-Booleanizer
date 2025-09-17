@@ -1,9 +1,9 @@
 package org.jc.assembly;
 
-import org.jc.chatgpt.CaptureToChatGPT;
+import org.jc.debooleanizer.ZeDebooleanizer;
 
 public class Main {
     public static void main(String[] args) {
-        CaptureToChatGPT.main(args);
+        ZeDebooleanizer.main(args);
     }
 }

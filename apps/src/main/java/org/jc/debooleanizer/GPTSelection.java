@@ -1,4 +1,4 @@
-package org.jc.chatgpt;
+package org.jc.debooleanizer;
 
 import org.zoxweb.shared.util.NVGenericMap;
 

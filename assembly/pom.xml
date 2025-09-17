@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.jc.ct</groupId>
+        <groupId>org.jc</groupId>
         <artifactId>code-tester</artifactId>
         <version>1.0.0</version>
     </parent>
 
 
-    <artifactId>org.jc.ct.assembly</artifactId>
+    <artifactId>org.jc.assembly</artifactId>
 
 
 
@@ -22,8 +22,8 @@
 <!--        </dependency>-->
 
         <dependency>
-            <groupId>org.jc.ct</groupId>
-            <artifactId>org.jc.ct.apps</artifactId>
+            <groupId>org.jc</groupId>
+            <artifactId>org.jc.apps</artifactId>
             <version>${proj-version}</version>
         </dependency>
         <dependency>
@@ -65,7 +65,7 @@
     </dependencies>
 
     <build>
-        <finalName>xlogistx-fat</finalName>
+        <finalName>de-booleanizer</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

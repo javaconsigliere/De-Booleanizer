@@ -1,4 +1,4 @@
-package org.jc.chatgpt;
+package org.jc.debooleanizer;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -46,9 +46,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 
 @MappedProp(name = "chat-gpt", id = "chat-gpt-capture")
-public class CaptureToChatGPT extends JFrame {
+public class ZeDebooleanizer extends JFrame {
 
-    public static final LogWrapper log = new LogWrapper(CaptureToChatGPT.class).setEnabled(true);
+    public static final LogWrapper log = new LogWrapper(ZeDebooleanizer.class).setEnabled(true);
     private JButton startButton;
     private JButton stopButton;
     private JButton clearPromptButton;
@@ -99,7 +99,7 @@ public class CaptureToChatGPT extends JFrame {
     private static String openAIModel = null;
     private Future<?> future = null;
 
-    public CaptureToChatGPT() {
+    public ZeDebooleanizer() {
         setTitle("Screen OCR ChatGPT Application");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
@@ -742,7 +742,7 @@ public class CaptureToChatGPT extends JFrame {
             }
 
 
-            CaptureToChatGPT app = null;
+            ZeDebooleanizer app = null;
             if (webServerConfig != null) {
                 try {
 
@@ -761,11 +761,11 @@ public class CaptureToChatGPT extends JFrame {
 
 
             if (app == null)
-                app = new CaptureToChatGPT();
+                app = new ZeDebooleanizer();
 
 
             // for java lambda compliance
-            CaptureToChatGPT appConst = app;
+            ZeDebooleanizer appConst = app;
             String filterContentConst = filterContent;
             //-----------------------------------------
             NVStringList promptsConst = prompts;

@@ -6,7 +6,7 @@
 
   <name>code-tester</name>
   <url>http://xlogistx.io</url>
-  <groupId>org.jc.ct</groupId>
+  <groupId>org.jc</groupId>
   <artifactId>code-tester</artifactId>
   <version>1.0.0</version>
   <packaging>pom</packaging>

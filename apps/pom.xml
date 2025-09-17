@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.jc.ct</groupId>
+        <groupId>org.jc</groupId>
         <artifactId>code-tester</artifactId>
         <version>1.0.0</version>
     </parent>
 
 
-    <artifactId>org.jc.ct.apps</artifactId>
+    <artifactId>org.jc.apps</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
