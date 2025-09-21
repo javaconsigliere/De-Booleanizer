@@ -34,6 +34,7 @@ import org.zoxweb.shared.util.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -61,13 +62,13 @@ public class ZeDebooleanizer extends JFrame {
     private JTextArea captureTextArea;
     private JTextArea audioTextArea;
     private JFileChooser fileChooser;
-    private JButton fileChooserButton;
+    //private JButton fileChooserButton;
     private JButton stopRecording;
     private DynamicComboBox captureModelDCB;
     private JTextField recordingModelName;
     private JCheckBox autoCopyToClipboardCB;
     private JCheckBox uniqueCaptureCB = null;
-    private GPTSelection gptSelection;
+    private ConfigSelection configSelection;
     private BufferedImage lastCapture;
     private DynamicComboBox promptsDCB;
 
@@ -84,7 +85,7 @@ public class ZeDebooleanizer extends JFrame {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 180, true, 10, 180).build();
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 240, true, 10, 240).build();
 
 
     static private Rectangle selectedArea;
@@ -96,7 +97,7 @@ public class ZeDebooleanizer extends JFrame {
     private static String ocrApiKey = null; // Replace with your OCR.space API key
     //private static String openAIApiKey = null; // Replace with your OpenAI API key
     //private static String openAIApiURL = null;
-    private static String openAIModel = null;
+    private static String aiModel = null;
     private Future<?> future = null;
 
     public ZeDebooleanizer() {
@@ -104,6 +105,7 @@ public class ZeDebooleanizer extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
+
         try {
             audioRecorder = new AudioRecorder(AudioUtil.defaultAudioFormat(), true);
             TaskUtil.defaultTaskProcessor().execute(audioRecorder);
@@ -111,6 +113,136 @@ public class ZeDebooleanizer extends JFrame {
             e.printStackTrace();
             audioRecorder = null;
         }
+    }
+
+    private JMenuBar createMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+        JMenu fileMenu = new JMenu("File");
+        fileMenu.setMnemonic(KeyEvent.VK_F);
+
+//        JMenuItem newItem = new JMenuItem("New");
+//        newItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, mask));
+//        newItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "New clicked"));
+//
+//        JMenuItem openItem = new JMenuItem("Open…");
+//        openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, mask));
+//        openItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Open clicked"));
+//
+//        JMenuItem saveItem = new JMenuItem("Save");
+//        saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, mask));
+//        saveItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Save clicked"));
+//
+//        fileMenu.add(newItem);
+//        fileMenu.add(openItem);
+//        fileMenu.add(saveItem);
+        JMenuItem fileChooserItem = new JMenuItem("File Chooser");
+        fileChooserItem.addActionListener(e -> fileChooser.showOpenDialog(this));
+        fileMenu.add(fileChooserItem);
+        fileMenu.addSeparator();
+
+        JMenuItem exitItem = new JMenuItem("Exit");
+        exitItem.setMnemonic(KeyEvent.VK_X);
+        exitItem.addActionListener(e -> {
+            this.dispose();
+            System.exit(0);
+        });
+        fileMenu.add(exitItem);
+
+
+        JMenu configMenu = new JMenu("Config");
+        JMenuItem apiKeyItem = new JMenuItem("API Key");
+        apiKeyItem.addActionListener(e -> configSelection.showAPIKey());
+        configMenu.add(apiKeyItem);
+        JMenuItem apiURLItem = new JMenuItem("API URL");
+        configMenu.add(apiURLItem);
+        configMenu.addSeparator();
+        ButtonGroup ocrGroup = new ButtonGroup();
+        JRadioButtonMenuItem noOCR = new JRadioButtonMenuItem("No OCR", true);
+        noOCR.addActionListener(e -> configSelection.setSelectionInfo(null));
+        JRadioButtonMenuItem localOCR = new JRadioButtonMenuItem("Local OCR");
+        localOCR.addActionListener(e -> configSelection.showLocalOCRDialog());
+        JRadioButtonMenuItem remoteOCR = new JRadioButtonMenuItem("Remote OCR");
+        remoteOCR.addActionListener(e -> configSelection.showRemoteOCRDialog());
+        ocrGroup.add(noOCR);
+        ocrGroup.add(localOCR);
+        ocrGroup.add(remoteOCR);
+        configMenu.add(noOCR);
+        configMenu.add(localOCR);
+        configMenu.add(remoteOCR);
+
+//        zoomGroup.add(zoom100);
+//        zoomGroup.add(zoom125);
+//        zoomGroup.add(zoom150);
+
+
+//        // ===== Edit =====
+//        JMenu editMenu = new JMenu("Edit");
+//        editMenu.setMnemonic(KeyEvent.VK_E);
+//
+//        JMenuItem cutItem = new JMenuItem("Cut");
+//        cutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, mask));
+//        cutItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Cut"));
+//
+//        JMenuItem copyItem = new JMenuItem("Copy");
+//        copyItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, mask));
+//        copyItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Copy"));
+//
+//        JMenuItem pasteItem = new JMenuItem("Paste");
+//        pasteItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, mask));
+//        pasteItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Paste"));
+//
+//        editMenu.add(cutItem);
+//        editMenu.add(copyItem);
+//        editMenu.add(pasteItem);
+
+//        // ===== View =====
+//        JMenu viewMenu = new JMenu("View");
+//        viewMenu.setMnemonic(KeyEvent.VK_V);
+//
+//        JCheckBoxMenuItem statusBar = new JCheckBoxMenuItem("Show Status Bar", true);
+//        statusBar.addActionListener(e ->
+//                JOptionPane.showMessageDialog(owner, "Status Bar: " + (statusBar.isSelected() ? "Shown" : "Hidden")));
+//        viewMenu.add(statusBar);
+//
+//        // Radio group for zoom preset
+//        viewMenu.addSeparator();
+//        ButtonGroup zoomGroup = new ButtonGroup();
+//        JRadioButtonMenuItem zoom100 = new JRadioButtonMenuItem("Zoom 100%", true);
+//        JRadioButtonMenuItem zoom125 = new JRadioButtonMenuItem("Zoom 125%");
+//        JRadioButtonMenuItem zoom150 = new JRadioButtonMenuItem("Zoom 150%");
+//        zoomGroup.add(zoom100);
+//        zoomGroup.add(zoom125);
+//        zoomGroup.add(zoom150);
+//
+//        zoom100.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Zoom set to 100%"));
+//        zoom125.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Zoom set to 125%"));
+//        zoom150.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Zoom set to 150%"));
+//
+//        viewMenu.add(zoom100);
+//        viewMenu.add(zoom125);
+//        viewMenu.add(zoom150);
+
+        // ===== Help =====
+        JMenu helpMenu = new JMenu("Help");
+//        helpMenu.setMnemonic(KeyEvent.VK_H);
+
+//        JMenuItem docsItem = new JMenuItem("Documentation");
+//        docsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+//        docsItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Open docs…"));
+
+        JMenuItem aboutItem = new JMenuItem("About");
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Ze-DeBooleanizer v 1.0.1"));
+
+//        helpMenu.add(docsItem);
+//        helpMenu.addSeparator();
+        helpMenu.add(aboutItem);
+
+        // Attach to bar
+        menuBar.add(fileMenu);
+        menuBar.add(configMenu);
+        menuBar.add(helpMenu);
+
+        return menuBar;
     }
 
 
@@ -197,24 +329,24 @@ public class ZeDebooleanizer extends JFrame {
         clearPromptButton = new JButton("Clear Prompt");
         selectButton = new JButton("Select");
         stopRecording = new JButton("StopAudio");
-        gptSelection = new GPTSelection(this, e -> {
+        configSelection = new ConfigSelection(this, e -> {
             gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, e));
         });
         autoCopyToClipboardCB = new JCheckBox("AutoCopy");
         autoCopyToClipboardCB.setSelected(true);
-        gptSelection.selectionBox.setName("CONF");
+//        configSelection.selectionBox.setName("CONF");
 
         refreshRateField = new JTextField("10s", 5); // Default refresh rate is 5 seconds
         fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-        fileChooserButton = new JButton("Files");
+        //fileChooserButton = new JButton("Files");
 //        captureModelName = new JTextField(10);
 //        captureModelName.setText(openAIModel);
-        captureModelDCB = new DynamicComboBox();
-        captureModelDCB.addItem(openAIModel);
+        captureModelDCB = new DynamicComboBox(false);
+        captureModelDCB.addItem(aiModel);
         recordingModelName = new JTextField(10);
-        recordingModelName.setText(openAIModel);
-        promptsDCB = new DynamicComboBox();
+        recordingModelName.setText(aiModel);
+        promptsDCB = new DynamicComboBox(false);
         responseFilterTA = GUIUtil.configureTextArea(new JTextArea(), null, null);
 
 
@@ -245,13 +377,10 @@ public class ZeDebooleanizer extends JFrame {
                 startButton,
                 stopButton,
                 new JLabel("Refresh Rate (s):"),
-                refreshRateField,
-                new JLabel("CONF"),
-                gptSelection.selectionBox,
-                fileChooserButton));
+                refreshRateField));
 
 
-        fileChooserButton.addActionListener(e -> fileChooser.showOpenDialog(this));
+        // fileChooserButton.addActionListener(e -> fileChooser.showOpenDialog(this));
         stopRecording.addActionListener(e ->
         {
             audioRecorder.setStatus(AudioRecorder.Status.RESET, () ->
@@ -304,6 +433,9 @@ public class ZeDebooleanizer extends JFrame {
 
         gptAPI.updateOkHttpClient(httpClient);
 
+        // put it here
+        setJMenuBar(createMenuBar());
+
     }
 
     @EndPointProp(methods = {HTTPMethod.GET}, name = "to-chat-gpt", uris = "/capture-to-gpt")
@@ -355,8 +487,9 @@ public class ZeDebooleanizer extends JFrame {
                         //audioRecorder.setStatus(AudioRecorder.Status.STOP_RECORDING);
                         try {
                             InputStream recordedData = audioRecorder.getRecordedStream();
-                            if(recordedData != null)
-                                if (log.isEnabled()) log.getLogger().info("is: " + Const.SizeInBytes.K.convertBytesDouble(recordedData.available()) + " " + Const.SizeInBytes.K.getName());
+                            if (recordedData != null)
+                                if (log.isEnabled())
+                                    log.getLogger().info("is: " + Const.SizeInBytes.K.convertBytesDouble(recordedData.available()) + " " + Const.SizeInBytes.K.getName());
                             if (recordedData != null) {
                                 // send to chatgpt transcribe
 
@@ -371,7 +504,7 @@ public class ZeDebooleanizer extends JFrame {
 //                                NVGenericMap response = gptAPI.syncCall(GTPAPIBuilder.Command.TRANSCRIBE, audioClip);
 //                                String toDisplay = response.getValue("text");
                                 String response = gptAPI.transcribe(recordedData, "AudioClip.wav");
-                                if(log.isEnabled()) log.getLogger().info("transcribe: " + response);
+                                if (log.isEnabled()) log.getLogger().info("transcribe: " + response);
                                 final String toDisplay = response;
                                 SwingUtilities.invokeLater(() -> audioTextArea.setText(toDisplay));
 
@@ -468,7 +601,7 @@ public class ZeDebooleanizer extends JFrame {
                 log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
             String text = null;
 
-            NVGenericMap selectionInfo = gptSelection.getSelectionInfo();
+            NVGenericMap selectionInfo = configSelection.getSelectionInfo();
             if (selectionInfo != null) {
                 switch (selectionInfo.getName()) {
                     case "local-ocr":
@@ -699,9 +832,9 @@ public class ZeDebooleanizer extends JFrame {
 
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
-            String openAIApiKey = params.stringValue("gpt-key", true);
-            //openAIApiURL = params.stringValue("gpt-url", true);
-            openAIModel = params.stringValue("gpt-model", true);
+            String apiKey = params.stringValue("api-key", true);
+            String apiURL = params.stringValue("api-url", true);
+            aiModel = params.stringValue("ai-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
             String jsonAIConfigFile = params.stringValue("json-ai-config", true);
             String filterContent = null;
@@ -777,7 +910,7 @@ public class ZeDebooleanizer extends JFrame {
                 }
                 appConst.setVisible(true);
 
-                appConst.gptSelection.setGPTAPIKey(openAIApiKey);
+
                 if (promptsConst != null) {
                     for (String prompt : promptsConst.getValue()) {
                         appConst.promptsDCB.addItem(prompt);
@@ -789,13 +922,17 @@ public class ZeDebooleanizer extends JFrame {
                         appConst.captureModelDCB.addItem(prompt);
                     }
                 }
+
+                appConst.configSelection.setAPIKey(apiKey);
+                if (SUS.isEmpty(apiKey))
+                    appConst.configSelection.showAPIKey();
             });
 
 
         } catch (Exception e) {
             e.printStackTrace();
 
-            System.err.println("Usage: cap=[on/off] gpt-key=[oai-api-key] gpt-url=[vision-url] gpt-model=[oai-model] json-ai-config=[data-filter-file]");
+            System.err.println("Usage: cap=[on/off] api-key=[oai-api-key] api-url=[base-api-url] ai-model=[oai-model] json-ai-config=[data-filter-file]");
         }
     }
 }

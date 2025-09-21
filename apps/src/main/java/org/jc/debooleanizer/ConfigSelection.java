@@ -6,10 +6,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
 
-public class GPTSelection {
+public class ConfigSelection {
 
     // Public selection box variable
-    public JComboBox<String> selectionBox;
     private final JFrame mainFrame;
     private NVGenericMap selectionInfo = null;
     private final Consumer<String> gptAPIKeyUpdater;
@@ -18,42 +17,14 @@ public class GPTSelection {
     private String gptAPIKey;
 
     // Constructor
-    public GPTSelection(JFrame mainFrame, Consumer<String> gtpUpdater) {
+    public ConfigSelection(JFrame mainFrame, Consumer<String> apiUpdater) {
         this.mainFrame = mainFrame;
-        this.gptAPIKeyUpdater = gtpUpdater;
-        initializeComponents();
+        this.gptAPIKeyUpdater = apiUpdater;
     }
 
-    private void initializeComponents() {
-        // Create the selection box with three entries
-        String[] options = {"No OCR", "Local OCR", "Remote OCR", "GPT API Key"};
-        selectionBox = new JComboBox<>(options);
-
-        // Set default selection to "No OCR"
-        selectionBox.setSelectedIndex(0);
-
-        // Add an action listener to handle selection changes
-        selectionBox.addActionListener(e -> {
-
-            String selectedOption = (String) selectionBox.getSelectedItem();
-            if ("Local OCR".equals(selectedOption)) {
-                showLocalOCRDialog();
-            } else if ("Remote OCR".equals(selectedOption)) {
-                showRemoteOCRDialog();
-            } else if ("GPT API Key".equals(selectedOption)) {
-                showGPTAPIKey();
-            } else {
-                // No OCR selected, call internal selection parameters
-                setSelectionInfo(null);
-            }
-
-        });
-
-        // Add the selection box to the panel
-    }
 
     // Method to display the Local OCR settings dialog
-    private void showLocalOCRDialog() {
+    public void showLocalOCRDialog() {
         // Create text fields
         JTextField pathField = new JTextField(20);
         JTextField languageField = new JTextField(10);
@@ -113,7 +84,7 @@ public class GPTSelection {
         cancelButton.addActionListener(e -> {
 
             // Reset selection to "No OCR"
-            selectionBox.setSelectedIndex(0);
+//            selectionBox.setSelectedIndex(0);
             dialog.dispose();
 
         });
@@ -123,12 +94,12 @@ public class GPTSelection {
         dialog.getContentPane().add(panel, BorderLayout.CENTER);
         dialog.getContentPane().add(buttonsPanel, BorderLayout.SOUTH);
         dialog.pack();
-        dialog.setLocationRelativeTo(mainFrame);
+//        dialog.setLocationRelativeTo(mainFrame);
         dialog.setVisible(true);
     }
 
     // Method to display the Remote OCR settings dialog
-    private void showRemoteOCRDialog() {
+    public void showRemoteOCRDialog() {
         // Create text field
         JTextField apiKeyField = new JTextField(25);
         JTextField imageFormat = new JTextField(15);
@@ -187,7 +158,7 @@ public class GPTSelection {
 
         cancelButton.addActionListener(e -> {
             // Reset selection to "No OCR"
-            selectionBox.setSelectedIndex(0);
+//            selectionBox.setSelectedIndex(0);
             dialog.dispose();
         });
 
@@ -200,10 +171,10 @@ public class GPTSelection {
         dialog.setVisible(true);
     }
 
-    private void showGPTAPIKey() {
+    public void showAPIKey() {
         // Create text field
         JTextField apiKeyField = new JTextField(25);
-        apiKeyField.setText(getGPTAPIKey());
+        apiKeyField.setText(getAPIKey());
 
 
         // Create buttons
@@ -242,7 +213,7 @@ public class GPTSelection {
         {
             // Retrieve input value
             String apiKey = apiKeyField.getText();
-            setGPTAPIKey(apiKey);
+            setAPIKey(apiKey);
 
             // Perform validation if necessary
             // ...
@@ -260,7 +231,7 @@ public class GPTSelection {
 
         cancelButton.addActionListener(e -> {
             // Reset selection to "No OCR"
-            selectionBox.setSelectedIndex(0);
+//            selectionBox.setSelectedIndex(0);
             dialog.dispose();
         });
 
@@ -274,7 +245,7 @@ public class GPTSelection {
     }
 
     // Method representing the internal selection parameters call
-    private void setSelectionInfo(NVGenericMap selection) {
+    public void setSelectionInfo(NVGenericMap selection) {
         this.selectionInfo = selection;
         // Implement your internal logic here
         System.out.println("Internal selection parameters called.");
@@ -285,29 +256,12 @@ public class GPTSelection {
         return selectionInfo;
     }
 
-    // Main method for testing purposes
-    public static void main(String[] args) {
-        // Create a JFrame to test the OCRSelectionPanel
-        JFrame frame = new JFrame("OCR Selection Test");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(200, 75);
 
-        // Create an instance of OCRSelectionPanel
-        GPTSelection ocrSelectionPanel = new GPTSelection(frame, null);
-
-        // Add the panel to the frame
-        frame.getContentPane().add(ocrSelectionPanel.selectionBox);
-
-        // Display the frame
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-    }
-
-    public String getGPTAPIKey() {
+    public String getAPIKey() {
         return gptAPIKey;
     }
 
-    public void setGPTAPIKey(String gptAPIKey) {
+    public void setAPIKey(String gptAPIKey) {
         this.gptAPIKey = gptAPIKey;
         gptAPIKeyUpdater.accept(gptAPIKey);
     }
