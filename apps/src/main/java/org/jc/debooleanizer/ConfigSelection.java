@@ -11,15 +11,15 @@ public class ConfigSelection {
     // Public selection box variable
     private final JFrame mainFrame;
     private NVGenericMap selectionInfo = null;
-    private final Consumer<String> gptAPIKeyUpdater;
+    private final Consumer<String> aiKeyUpdater;
 
 
-    private String gptAPIKey;
+    private String aiAPIKey;
 
     // Constructor
     public ConfigSelection(JFrame mainFrame, Consumer<String> apiUpdater) {
         this.mainFrame = mainFrame;
-        this.gptAPIKeyUpdater = apiUpdater;
+        this.aiKeyUpdater = apiUpdater;
     }
 
 
@@ -171,10 +171,10 @@ public class ConfigSelection {
         dialog.setVisible(true);
     }
 
-    public void showAPIKey() {
+    public void showAIAPIKey() {
         // Create text field
         JTextField apiKeyField = new JTextField(25);
-        apiKeyField.setText(getAPIKey());
+        apiKeyField.setText(getAIAPIKey());
 
 
         // Create buttons
@@ -182,7 +182,7 @@ public class ConfigSelection {
         JButton cancelButton = new JButton("Cancel");
 
         // Create the dialog
-        JDialog dialog = new JDialog((Frame) null, "GPT-KEY", true);
+        JDialog dialog = new JDialog((Frame) null, "AI-API-KEY", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
         // Set up the layout
@@ -194,7 +194,7 @@ public class ConfigSelection {
         // Add components to the panel
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("API-KEY:"), gbc);
+        panel.add(new JLabel("AI-API-KEY:"), gbc);
 
         gbc.gridx = 1;
         panel.add(apiKeyField, gbc);
@@ -213,16 +213,16 @@ public class ConfigSelection {
         {
             // Retrieve input value
             String apiKey = apiKeyField.getText();
-            setAPIKey(apiKey);
+            setAIAPIKey(apiKey);
 
             // Perform validation if necessary
             // ...
 
             // Call internal selection parameters
 
-            setSelectionInfo(new NVGenericMap("gpt-api-key").build("gpt-key", apiKey));
-            if (gptAPIKeyUpdater != null)
-                gptAPIKeyUpdater.accept(apiKey);
+            setSelectionInfo(new NVGenericMap("ai-api-key").build("ai-api-key", apiKey));
+            if (aiKeyUpdater != null)
+                aiKeyUpdater.accept(apiKey);
 
             // Close the dialog
             dialog.dispose();
@@ -257,12 +257,12 @@ public class ConfigSelection {
     }
 
 
-    public String getAPIKey() {
-        return gptAPIKey;
+    public String getAIAPIKey() {
+        return aiAPIKey;
     }
 
-    public void setAPIKey(String gptAPIKey) {
-        this.gptAPIKey = gptAPIKey;
-        gptAPIKeyUpdater.accept(gptAPIKey);
+    public void setAIAPIKey(String gptAPIKey) {
+        this.aiAPIKey = gptAPIKey;
+        aiKeyUpdater.accept(gptAPIKey);
     }
 }

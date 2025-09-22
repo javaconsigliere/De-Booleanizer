@@ -72,6 +72,9 @@ public class ZeDebooleanizer extends JFrame {
     private BufferedImage lastCapture;
     private DynamicComboBox promptsDCB;
 
+
+    private final JCheckBoxMenuItem enableLoggingItem = new JCheckBoxMenuItem("Enable Logs");
+
     private LedWidget captureLed;
     private final LedWidget audioLed = new LedWidget(30, 30, Color.BLACK)
             .mapStatus(AudioRecorder.Status.RECORDING, Color.RED)
@@ -135,7 +138,7 @@ public class ZeDebooleanizer extends JFrame {
 //        fileMenu.add(newItem);
 //        fileMenu.add(openItem);
 //        fileMenu.add(saveItem);
-        JMenuItem fileChooserItem = new JMenuItem("File Chooser");
+        JMenuItem fileChooserItem = new JMenuItem("Logs Dir");
         fileChooserItem.addActionListener(e -> fileChooser.showOpenDialog(this));
         fileMenu.add(fileChooserItem);
         fileMenu.addSeparator();
@@ -150,10 +153,10 @@ public class ZeDebooleanizer extends JFrame {
 
 
         JMenu configMenu = new JMenu("Config");
-        JMenuItem apiKeyItem = new JMenuItem("API Key");
-        apiKeyItem.addActionListener(e -> configSelection.showAPIKey());
+        JMenuItem apiKeyItem = new JMenuItem("AI API Key");
+        apiKeyItem.addActionListener(e -> configSelection.showAIAPIKey());
         configMenu.add(apiKeyItem);
-        JMenuItem apiURLItem = new JMenuItem("API URL");
+        JMenuItem apiURLItem = new JMenuItem("AI API URL");
         configMenu.add(apiURLItem);
         configMenu.addSeparator();
         ButtonGroup ocrGroup = new ButtonGroup();
@@ -169,6 +172,9 @@ public class ZeDebooleanizer extends JFrame {
         configMenu.add(noOCR);
         configMenu.add(localOCR);
         configMenu.add(remoteOCR);
+        configMenu.addSeparator();
+//        JCheckBoxMenuItem enableLoggingItem = new JCheckBoxMenuItem("Enable Logs");
+        configMenu.add(enableLoggingItem);
 
 //        zoomGroup.add(zoom100);
 //        zoomGroup.add(zoom125);
@@ -231,7 +237,7 @@ public class ZeDebooleanizer extends JFrame {
 //        docsItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Open docs…"));
 
         JMenuItem aboutItem = new JMenuItem("About");
-        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Ze-DeBooleanizer v 1.0.1"));
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Ze-DeBooleanizer v 1.0.2"));
 
 //        helpMenu.add(docsItem);
 //        helpMenu.addSeparator();
@@ -338,15 +344,15 @@ public class ZeDebooleanizer extends JFrame {
 
         refreshRateField = new JTextField("10s", 5); // Default refresh rate is 5 seconds
         fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         //fileChooserButton = new JButton("Files");
 //        captureModelName = new JTextField(10);
 //        captureModelName.setText(openAIModel);
-        captureModelDCB = new DynamicComboBox(false);
+        captureModelDCB = new DynamicComboBox(true);
         captureModelDCB.addItem(aiModel);
         recordingModelName = new JTextField(10);
         recordingModelName.setText(aiModel);
-        promptsDCB = new DynamicComboBox(false);
+        promptsDCB = new DynamicComboBox(true);
         responseFilterTA = GUIUtil.configureTextArea(new JTextArea(), null, null);
 
 
@@ -587,7 +593,7 @@ public class ZeDebooleanizer extends JFrame {
             File chosenDir = fileChooser.getSelectedFile();
             String baseFileName = null;
 
-            if (chosenDir != null) {
+            if (chosenDir != null && enableLoggingItem.isSelected()) {
                 if (chosenDir.isDirectory()) {
                     baseFileName = DateUtil.FILE_DATE_FORMAT.format(new Date());
                     File file = new File(chosenDir, baseFileName + ".png");
@@ -612,7 +618,7 @@ public class ZeDebooleanizer extends JFrame {
                         // Perform OCR
                         text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
                         break;
-                    case "gpt-api-key":
+                    case "ai-api-key":
                         text = promptsDCB.getSelectedItem();//filterPromptPanel.getPromptInputText();
                         break;
                 }
@@ -832,7 +838,7 @@ public class ZeDebooleanizer extends JFrame {
 
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
-            String apiKey = params.stringValue("api-key", true);
+            String aiAPIKey = params.stringValue("ai-api-key", true);
             String apiURL = params.stringValue("api-url", true);
             aiModel = params.stringValue("ai-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
@@ -923,16 +929,16 @@ public class ZeDebooleanizer extends JFrame {
                     }
                 }
 
-                appConst.configSelection.setAPIKey(apiKey);
-                if (SUS.isEmpty(apiKey))
-                    appConst.configSelection.showAPIKey();
+                appConst.configSelection.setAIAPIKey(aiAPIKey);
+                if (SUS.isEmpty(aiAPIKey))
+                    appConst.configSelection.showAIAPIKey();
             });
 
 
         } catch (Exception e) {
             e.printStackTrace();
 
-            System.err.println("Usage: cap=[on/off] api-key=[oai-api-key] api-url=[base-api-url] ai-model=[oai-model] json-ai-config=[data-filter-file]");
+            System.err.println("Usage: cap=[on/off] ai-api-key=[ai-api-key] api-url=[base-api-url] ai-model=[ai-model] json-ai-config=[data-filter-file]");
         }
     }
 }
