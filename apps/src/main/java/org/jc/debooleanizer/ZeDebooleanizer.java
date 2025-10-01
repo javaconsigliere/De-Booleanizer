@@ -3,18 +3,18 @@ package org.jc.debooleanizer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.xlogistx.api.gpt.GPTAPI;
-import io.xlogistx.api.gpt.GTPAPIBuilder;
+import io.xlogistx.api.ai.AIAPI;
+import io.xlogistx.api.ai.AIAPIBuilder;
 import io.xlogistx.audio.AudioRecorder;
 import io.xlogistx.audio.AudioUtil;
 import io.xlogistx.gui.DynamicComboBox;
 import io.xlogistx.gui.GUIUtil;
 import io.xlogistx.gui.LedWidget;
+import io.xlogistx.gui.TreeTextWidget;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
 import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
-import org.jc.imaging.ocr.OCRUtil;
 import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
 import org.zoxweb.server.io.UByteArrayOutputStream;
@@ -64,31 +64,32 @@ public class ZeDebooleanizer extends JFrame {
     private JFileChooser fileChooser;
     //private JButton fileChooserButton;
     private JButton stopRecording;
-    private DynamicComboBox captureModelDCB;
+    private DynamicComboBox aiModelDCB;
     private JTextField recordingModelName;
     private JCheckBox autoCopyToClipboardCB;
     private JCheckBox uniqueCaptureCB = null;
     private ConfigSelection configSelection;
     private BufferedImage lastCapture;
-    private DynamicComboBox promptsDCB;
+    private TreeTextWidget promptsDCB;
+    private final NVGenericMap deBooleanizerConfig = new NVGenericMap("APIConfig");
 
 
     private final JCheckBoxMenuItem enableLoggingItem = new JCheckBoxMenuItem("Enable Logs");
 
     private LedWidget captureLed;
     private final LedWidget audioLed = new LedWidget(30, 30, Color.BLACK)
-            .mapStatus(AudioRecorder.Status.RECORDING, Color.RED)
-            .mapStatus(AudioRecorder.Status.STOP_RECORDING, Color.GREEN)
-            .mapStatus(AudioRecorder.Status.PROCESSING, Color.BLUE);
+            .mapStatus(AudioRecorder.Status.RECORDING, GUIUtil.BOOTSTARP_RED)
+            .mapStatus(AudioRecorder.Status.STOP_RECORDING, GUIUtil.BOOTSTARP_GREEN)
+            .mapStatus(AudioRecorder.Status.PROCESSING, GUIUtil.BOOTSTRAP_BLUE);
     private JButton audioButton;
 
-    private final GPTAPI gptAPI = GTPAPIBuilder.SINGLETON.createAPI("capture", "gpt capture api", null);
+    private final AIAPI aiApi = AIAPIBuilder.SINGLETON.createAPI("capture", "gpt capture api", null);
     private AudioRecorder audioRecorder;
 
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 240, true, 10, 240).build();
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 300, true, 10, 60).build();
 
 
     static private Rectangle selectedArea;
@@ -153,26 +154,27 @@ public class ZeDebooleanizer extends JFrame {
 
 
         JMenu configMenu = new JMenu("Config");
-        JMenuItem apiKeyItem = new JMenuItem("AI API Key");
-        apiKeyItem.addActionListener(e -> configSelection.showAIAPIKey());
+        JMenuItem apiKeyItem = new JMenuItem("AI API Config");
+        apiKeyItem.addActionListener(e -> configSelection.showAIAPIConfig());
         configMenu.add(apiKeyItem);
-        JMenuItem apiURLItem = new JMenuItem("AI API URL");
-        configMenu.add(apiURLItem);
+//        JMenuItem apiURLItem = new JMenuItem("AI API URL");
+//        apiURLItem.addActionListener(e->configSelection.showAIAPIURL());
+//        configMenu.add(apiURLItem);
         configMenu.addSeparator();
-        ButtonGroup ocrGroup = new ButtonGroup();
-        JRadioButtonMenuItem noOCR = new JRadioButtonMenuItem("No OCR", true);
-        noOCR.addActionListener(e -> configSelection.setSelectionInfo(null));
-        JRadioButtonMenuItem localOCR = new JRadioButtonMenuItem("Local OCR");
-        localOCR.addActionListener(e -> configSelection.showLocalOCRDialog());
-        JRadioButtonMenuItem remoteOCR = new JRadioButtonMenuItem("Remote OCR");
-        remoteOCR.addActionListener(e -> configSelection.showRemoteOCRDialog());
-        ocrGroup.add(noOCR);
-        ocrGroup.add(localOCR);
-        ocrGroup.add(remoteOCR);
-        configMenu.add(noOCR);
-        configMenu.add(localOCR);
-        configMenu.add(remoteOCR);
-        configMenu.addSeparator();
+//        ButtonGroup ocrGroup = new ButtonGroup();
+//        JRadioButtonMenuItem noOCR = new JRadioButtonMenuItem("No OCR", true);
+//        noOCR.addActionListener(e -> configSelection.setSelectionInfo(null));
+//        JRadioButtonMenuItem localOCR = new JRadioButtonMenuItem("Local OCR");
+//        localOCR.addActionListener(e -> configSelection.showLocalOCRDialog());
+//        JRadioButtonMenuItem remoteOCR = new JRadioButtonMenuItem("Remote OCR");
+//        remoteOCR.addActionListener(e -> configSelection.showRemoteOCRDialog());
+//        ocrGroup.add(noOCR);
+//        ocrGroup.add(localOCR);
+//        ocrGroup.add(remoteOCR);
+//        configMenu.add(noOCR);
+//        configMenu.add(localOCR);
+//        configMenu.add(remoteOCR);
+//        configMenu.addSeparator();
 //        JCheckBoxMenuItem enableLoggingItem = new JCheckBoxMenuItem("Enable Logs");
         configMenu.add(enableLoggingItem);
 
@@ -321,8 +323,8 @@ public class ZeDebooleanizer extends JFrame {
 
 
         captureLed = new LedWidget(30, 30, Color.BLACK);
-        captureLed.mapStatus(Const.Bool.ON, Color.GREEN)
-                .mapStatus(Const.Bool.OFF, Color.RED);
+        captureLed.mapStatus(Const.Bool.ON, GUIUtil.BOOTSTARP_GREEN)
+                .mapStatus(Const.Bool.OFF, GUIUtil.BOOTSTARP_RED);
         captureLed.setStatus(Const.Bool.ON);
 
         audioButton = new JButton("Audio");
@@ -335,8 +337,10 @@ public class ZeDebooleanizer extends JFrame {
         clearPromptButton = new JButton("Clear Prompt");
         selectButton = new JButton("Select");
         stopRecording = new JButton("StopAudio");
-        configSelection = new ConfigSelection(this, e -> {
-            gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, e));
+        configSelection = new ConfigSelection(this, deBooleanizerConfig, gnvs -> {
+            log.getLogger().info(""+gnvs);
+            aiApi.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gnvs.getValue("ai-api-key")));
+            aiApi.updateURL(gnvs.getValue("ai-api-url"));
         });
         autoCopyToClipboardCB = new JCheckBox("AutoCopy");
         autoCopyToClipboardCB.setSelected(true);
@@ -348,11 +352,12 @@ public class ZeDebooleanizer extends JFrame {
         //fileChooserButton = new JButton("Files");
 //        captureModelName = new JTextField(10);
 //        captureModelName.setText(openAIModel);
-        captureModelDCB = new DynamicComboBox(true);
-        captureModelDCB.addItem(aiModel);
+        aiModelDCB = new DynamicComboBox(true);
+        if(SUS.isNotEmpty(aiModel))
+            aiModelDCB.addItem(aiModel);
         recordingModelName = new JTextField(10);
         recordingModelName.setText(aiModel);
-        promptsDCB = new DynamicComboBox(true);
+        promptsDCB = new TreeTextWidget("Prompts");
         responseFilterTA = GUIUtil.configureTextArea(new JTextArea(), null, null);
 
 
@@ -366,7 +371,7 @@ public class ZeDebooleanizer extends JFrame {
                 autoCopyToClipboardCB,
                 uniqueCaptureCB,
                 new JLabel("Model"),
-                captureModelDCB));
+                aiModelDCB));
         capturePanel.add(promptsDCB);
         capturePanel.add(GUIUtil.createScrollPane(responseFilterTA, "Response-Filter", null, null));
         controlPanel.add(capturePanel);
@@ -437,7 +442,7 @@ public class ZeDebooleanizer extends JFrame {
         // Initially, stop button is disabled
         stopButton.setEnabled(false);
 
-        gptAPI.updateOkHttpClient(httpClient);
+        aiApi.updateOkHttpClient(httpClient);
 
         // put it here
         setJMenuBar(createMenuBar());
@@ -509,7 +514,7 @@ public class ZeDebooleanizer extends JFrame {
 //                                //gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
 //                                NVGenericMap response = gptAPI.syncCall(GTPAPIBuilder.Command.TRANSCRIBE, audioClip);
 //                                String toDisplay = response.getValue("text");
-                                String response = gptAPI.transcribe(recordedData, "AudioClip.wav");
+                                String response = aiApi.transcribe(recordedData, "AudioClip.wav");
                                 if (log.isEnabled()) log.getLogger().info("transcribe: " + response);
                                 final String toDisplay = response;
                                 SwingUtilities.invokeLater(() -> audioTextArea.setText(toDisplay));
@@ -517,7 +522,7 @@ public class ZeDebooleanizer extends JFrame {
                                 String[] models = recordingModelName.getText().split(",");
                                 for (int i = 0; i < models.length; i++) {
                                     if (SUS.isNotEmpty(models[i])) {
-                                        response = gptAPI.completion(models[i], response, 5000);
+                                        response = aiApi.completion(models[i], response, 5000);
                                         final String text = response;
                                         SwingUtilities.invokeLater(() -> audioTextArea.setText(text));
                                     }
@@ -605,47 +610,49 @@ public class ZeDebooleanizer extends JFrame {
 
             if (log.isEnabled())
                 log.getLogger().info("New image to process, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
-            String text = null;
+//            String text = null;
 
-            NVGenericMap selectionInfo = configSelection.getSelectionInfo();
-            if (selectionInfo != null) {
-                switch (selectionInfo.getName()) {
-                    case "local-ocr":
-                        text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
-                        break;
+            prompt  = promptsDCB.getContent();
 
-                    case "remote-ocr":
-                        // Perform OCR
-                        text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
-                        break;
-                    case "ai-api-key":
-                        text = promptsDCB.getSelectedItem();//filterPromptPanel.getPromptInputText();
-                        break;
-                }
-                prompt = text;
-//                String textToDisplay = prompt;
-//                SwingUtilities.invokeLater(() -> filterPromptPanel.setPromptInputText(textToDisplay));
-            } else {
-                prompt = promptsDCB.getSelectedItem();
-            }
+//            NVGenericMap selectionInfo = configSelection.getSelectionInfo();
+//            if (selectionInfo != null) {
+//                switch (selectionInfo.getName()) {
+//                    case "local-ocr":
+//                        text = OCRUtil.SINGLETON.tesseractOCRImage(selectionInfo.getValue("path"), selectionInfo.getValue("language"), image);
+//                        break;
+//
+//                    case "remote-ocr":
+//                        // Perform OCR
+//                        text = performOCRWithOCRSpace(selectionInfo.getValue("image-format"), image, selectionInfo.getValue("api-key"));
+//                        break;
+//                    case "ai-api-key":
+//                        text = promptsDCB.getSelectedItem();//filterPromptPanel.getPromptInputText();
+//                        break;
+//                }
+//                prompt = text;
+////                String textToDisplay = prompt;
+////                SwingUtilities.invokeLater(() -> filterPromptPanel.setPromptInputText(textToDisplay));
+//            } else {
+//                prompt = promptsDCB.getSelectedItem();
+//            }
 
 
             if (SUS.isNotEmpty(prompt)) {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
-                String[] models = captureModelDCB.getSelectedItem().split(",");
+                String[] models = aiModelDCB.getSelectedItem().split(",");
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
                     if (content == null)
-                        request = GTPAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, baos, "png");
+                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, baos, "png");
                     else
-                        request = GTPAPIBuilder.SINGLETON.toPromptParams(models[i], "" + content, 5000);
+                        request = AIAPIBuilder.SINGLETON.toPromptParams(models[i], "" + content, 5000);
 
 
                     //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
-                    //gptAPI.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gptSelection.getGPTAPIKey()));
-                    response = gptAPI.syncCall(GTPAPIBuilder.Command.COMPLETION, request);
+                    aiApi.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, deBooleanizerConfig.getValue("ai-api-key")));
+                    response = aiApi.syncCall(AIAPIBuilder.Command.COMPLETION, request);
                     if (log.isEnabled()) log.getLogger().info("" + response);
                     NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
@@ -839,7 +846,7 @@ public class ZeDebooleanizer extends JFrame {
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
             String aiAPIKey = params.stringValue("ai-api-key", true);
-            String apiURL = params.stringValue("api-url", true);
+            String aiAPIURL = params.stringValue("ai-api-url", true);
             aiModel = params.stringValue("ai-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
             String jsonAIConfigFile = params.stringValue("json-ai-config", true);
@@ -852,7 +859,7 @@ public class ZeDebooleanizer extends JFrame {
                     e.printStackTrace();
                 }
             }
-            NVStringList prompts = null;
+            NVGenericMap prompts = null;
             NVStringList models = null;
             if (jsonAIConfigFile != null) {
                 try {
@@ -907,7 +914,7 @@ public class ZeDebooleanizer extends JFrame {
             ZeDebooleanizer appConst = app;
             String filterContentConst = filterContent;
             //-----------------------------------------
-            NVStringList promptsConst = prompts;
+            NVGenericMap promptsConst = prompts;
             NVStringList modelsConst = models;
             SwingUtilities.invokeLater(() -> {
                 appConst.initComponents();
@@ -918,20 +925,31 @@ public class ZeDebooleanizer extends JFrame {
 
 
                 if (promptsConst != null) {
-                    for (String prompt : promptsConst.getValue()) {
-                        appConst.promptsDCB.addItem(prompt);
+                    for (GetNameValue gnv: promptsConst.values()) {
+
+                        appConst.promptsDCB.addEntry(null, gnv.getName(), (String)gnv.getValue());
                     }
                 }
 
                 if (modelsConst != null) {
                     for (String prompt : modelsConst.getValue()) {
-                        appConst.captureModelDCB.addItem(prompt);
+                        appConst.aiModelDCB.addItem(prompt);
                     }
                 }
 
-                appConst.configSelection.setAIAPIKey(aiAPIKey);
+
+
+                appConst.deBooleanizerConfig.build("ai-api-name", "openai");
+                if(aiAPIURL != null)
+                    appConst.deBooleanizerConfig.build("ai-api-url", aiAPIURL);
+                else
+                    appConst.deBooleanizerConfig.build("ai-api-url", appConst.aiApi.getEndPoints()[0].getConfig().getURL());
+                appConst.deBooleanizerConfig.build("ai-api-key", aiAPIKey);
+
+
+                //appConst.configSelection.setAIAPIKey(aiAPIKey);
                 if (SUS.isEmpty(aiAPIKey))
-                    appConst.configSelection.showAIAPIKey();
+                    appConst.configSelection.showAIAPIConfig();
             });
 
 

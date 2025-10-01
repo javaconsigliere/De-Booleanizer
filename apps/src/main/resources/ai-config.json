@@ -1,13 +1,15 @@
 {
-  "prompts": [
-    "Analyze the image and generate an accurate prompt that will be consumed by an LLM",
-    "Analyse the image and provide an optimized solution. Provide code solution between ```code and ``` "
-
-  ],
+  "prompts": {
+    "ConvertToLLM" : "Analyze the image and generate an accurate prompt that will be consumed by an LLM",
+    "Solve":"Analyse the image and provide an optimized solution. Provide code solution between ```code and ```",
+    "SolveGrok":"Analyse the image and provide an optimized solution use the programming language specified in the image. The coding response should start  ```code and end with ```"
+  },
   "models": [
     "gpt-5-nano,gpt-5",
     "gpt-5-nano",
+    "grok-4-latest",
     "gpt-5",
     "gpt-5-mini"
+
   ]
 }

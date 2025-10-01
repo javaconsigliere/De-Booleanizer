@@ -67,7 +67,7 @@
       "bean": "io.xlogistx.http.services.SysConfig"
     },
     {
-      "bean": "org.jc.chatgpt.CaptureToChatGPT"
+      "bean": "org.jc.debooleanizer.ZeDebooleanizer"
     },
     {
       "bean": "io.xlogistx.http.services.SysCommand",
