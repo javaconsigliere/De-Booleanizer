@@ -239,7 +239,7 @@ public class ZeDebooleanizer extends JFrame {
 //        docsItem.addActionListener(e -> JOptionPane.showMessageDialog(owner, "Open docs…"));
 
         JMenuItem aboutItem = new JMenuItem("About");
-        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Ze-DeBooleanizer v 1.0.2"));
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Ze-DeBooleanizer v 1.0.5"));
 
 //        helpMenu.add(docsItem);
 //        helpMenu.addSeparator();
