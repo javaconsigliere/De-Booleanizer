@@ -652,7 +652,9 @@ public class ZeDebooleanizer extends JFrame {
 
                     //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
                     aiApi.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, deBooleanizerConfig.getValue("ai-api-key")));
+                    long ts = System.currentTimeMillis();
                     response = aiApi.syncCall(AIAPIBuilder.Command.COMPLETION, request);
+                    ts = System.currentTimeMillis() - ts;
                     if (log.isEnabled()) log.getLogger().info("" + response);
                     NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
@@ -665,7 +667,9 @@ public class ZeDebooleanizer extends JFrame {
                     content = message.getValue("content");
                     if (log.isEnabled()) log.getLogger().info("Content\n" + content);
 
+
                     SwingUtilities.invokeLater(() -> captureTextArea.setText("" + message.getValue("content")));
+                    if(log.isEnabled()) log.getLogger().info("Last request took " + Const.TimeInMillis.toString(ts));
                 }
 
 
