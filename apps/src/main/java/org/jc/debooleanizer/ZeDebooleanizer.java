@@ -78,8 +78,8 @@ public class ZeDebooleanizer extends JFrame {
 
     private LedWidget captureLed;
     private final LedWidget audioLed = new LedWidget(30, 30, Color.BLACK)
-            .mapStatus(AudioRecorder.Status.RECORDING, GUIUtil.BOOTSTARP_RED)
-            .mapStatus(AudioRecorder.Status.STOP_RECORDING, GUIUtil.BOOTSTARP_GREEN)
+            .mapStatus(AudioRecorder.Status.RECORDING, GUIUtil.BOOTSTRAP_RED)
+            .mapStatus(AudioRecorder.Status.STOP_RECORDING, GUIUtil.BOOTSTRAP_GREEN)
             .mapStatus(AudioRecorder.Status.PROCESSING, GUIUtil.BOOTSTRAP_BLUE);
     private JButton audioButton;
 
@@ -323,8 +323,8 @@ public class ZeDebooleanizer extends JFrame {
 
 
         captureLed = new LedWidget(30, 30, Color.BLACK);
-        captureLed.mapStatus(Const.Bool.ON, GUIUtil.BOOTSTARP_GREEN)
-                .mapStatus(Const.Bool.OFF, GUIUtil.BOOTSTARP_RED);
+        captureLed.mapStatus(Const.Bool.ON, GUIUtil.BOOTSTRAP_GREEN)
+                .mapStatus(Const.Bool.OFF, GUIUtil.BOOTSTRAP_RED);
         captureLed.setStatus(Const.Bool.ON);
 
         audioButton = new JButton("Audio");

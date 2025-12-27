@@ -119,7 +119,6 @@ public class OCRUtil {
             tesseract.setDatapath(tesserActPath);
             tesseract.setLanguage(lang);
             ret = tesseract.doOCR(image);
-            lastResult = lastResult;
         } finally {
             lock.unlock();
 

@@ -1,4 +1,4 @@
-package org.jc.http;
+package org.jc;
 // OktaHTTPKeepAlive
 
 import okhttp3.*;
