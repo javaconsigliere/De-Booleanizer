@@ -157,6 +157,11 @@ public class ZeDebooleanizer extends JFrame {
         JMenuItem apiKeyItem = new JMenuItem("AI API Config");
         apiKeyItem.addActionListener(e -> configSelection.showAIAPIConfig());
         configMenu.add(apiKeyItem);
+
+//        JMenuItem selectCaptureAreaItem = new JMenuItem("Select Capture Area");
+//        selectCaptureAreaItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+//        selectCaptureAreaItem.addActionListener(e -> selectProcessing());
+//        configMenu.add(selectCaptureAreaItem);
 //        JMenuItem apiURLItem = new JMenuItem("AI API URL");
 //        apiURLItem.addActionListener(e->configSelection.showAIAPIURL());
 //        configMenu.add(apiURLItem);
@@ -368,6 +373,7 @@ public class ZeDebooleanizer extends JFrame {
         capturePanel.add(GUIUtil.createPanel(null, new FlowLayout(FlowLayout.LEFT),
                 captureButton,
                 captureLed,
+                selectButton,
                 autoCopyToClipboardCB,
                 uniqueCaptureCB,
                 new JLabel("Model"),
