@@ -89,7 +89,7 @@ public class ZeDebooleanizer extends JFrame {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, null, 300, true, 10, 60).build();
+    private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, true,null, 300, true, 10, 60).build();
 
 
     static private Rectangle selectedArea;
