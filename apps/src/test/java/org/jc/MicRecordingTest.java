@@ -4,6 +4,7 @@ import io.xlogistx.audio.AudioRecorder;
 import io.xlogistx.audio.AudioUtil;
 import org.zoxweb.server.io.IOUtil;
 import org.zoxweb.server.task.TaskUtil;
+import org.zoxweb.shared.io.SharedIOUtil;
 import org.zoxweb.shared.util.Const;
 import org.zoxweb.shared.util.ParamUtil;
 import org.zoxweb.shared.util.RateController;
@@ -38,7 +39,8 @@ public class MicRecordingTest
 //
 //        });
 
-        TaskUtil.defaultTaskScheduler().queue(durationToMillis, ()->{IOUtil.close(ar);System.out.println("Closed " + Const.TimeInMillis.toString(System.currentTimeMillis()));});
+        TaskUtil.defaultTaskScheduler().queue(durationToMillis, ()->{
+            SharedIOUtil.close(ar);System.out.println("Closed " + Const.TimeInMillis.toString(System.currentTimeMillis()));});
 
         TaskUtil.waitIfBusy(300);
         TaskUtil.close();
