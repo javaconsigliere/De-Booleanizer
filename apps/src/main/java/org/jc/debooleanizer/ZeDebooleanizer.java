@@ -7,6 +7,7 @@ import io.xlogistx.api.ai.AIAPI;
 import io.xlogistx.api.ai.AIAPIBuilder;
 import io.xlogistx.audio.AudioRecorder;
 import io.xlogistx.audio.AudioUtil;
+import io.xlogistx.common.util.NVColor;
 import io.xlogistx.gui.DynamicComboBox;
 import io.xlogistx.gui.GUIUtil;
 import io.xlogistx.gui.LedWidget;
@@ -78,9 +79,9 @@ public class ZeDebooleanizer extends JFrame {
 
     private LedWidget captureLed;
     private final LedWidget audioLed = new LedWidget(30, 30, Color.BLACK)
-            .mapStatus(AudioRecorder.Status.RECORDING, GUIUtil.BOOTSTRAP_RED)
-            .mapStatus(AudioRecorder.Status.STOP_RECORDING, GUIUtil.BOOTSTRAP_GREEN)
-            .mapStatus(AudioRecorder.Status.PROCESSING, GUIUtil.BOOTSTRAP_BLUE);
+            .mapStatus(AudioRecorder.Status.RECORDING, NVColor.BOOTSTRAP_RED.color())
+            .mapStatus(AudioRecorder.Status.STOP_RECORDING, NVColor.BOOTSTRAP_GREEN.color())
+            .mapStatus(AudioRecorder.Status.PROCESSING, NVColor.BOOTSTRAP_BLUE.color());
     private JButton audioButton;
 
     private final AIAPI aiApi = AIAPIBuilder.SINGLETON.createAPI("capture", "gpt capture api", null);
@@ -328,8 +329,8 @@ public class ZeDebooleanizer extends JFrame {
 
 
         captureLed = new LedWidget(30, 30, Color.BLACK);
-        captureLed.mapStatus(Const.Bool.ON, GUIUtil.BOOTSTRAP_GREEN)
-                .mapStatus(Const.Bool.OFF, GUIUtil.BOOTSTRAP_RED);
+        captureLed.mapStatus(Const.Bool.ON, NVColor.BOOTSTRAP_GREEN.color())
+                .mapStatus(Const.Bool.OFF, NVColor.BOOTSTRAP_RED.color());
         captureLed.setStatus(Const.Bool.ON);
 
         audioButton = new JButton("Audio");
