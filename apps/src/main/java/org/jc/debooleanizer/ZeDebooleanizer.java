@@ -93,7 +93,7 @@ public class ZeDebooleanizer extends JFrame {
     private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, true,null, 300, true, 10, 60).build();
 
 
-    static private Rectangle selectedArea;
+    private Rectangle selectedArea;
     private final RateCounter rc = new RateCounter("app");
 
     //private AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -155,6 +155,22 @@ public class ZeDebooleanizer extends JFrame {
 
 
         JMenu configMenu = new JMenu("Config");
+        JMenuItem captureSelectionAreaItem = new JMenuItem("Capture Selection Area");
+        captureSelectionAreaItem.addActionListener(e -> {
+            setVisible(false);
+            // GUIUtil.captureSelectedArea() blocks until the selection is made,
+            // it must run off the EDT or the SelectionWindow never gets mouse events
+            TaskUtil.defaultTaskProcessor().execute(() -> {
+                try {
+                    selectCaptureArea();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                } finally {
+                    SwingUtilities.invokeLater(() -> setVisible(true));
+                }
+            });
+        });
+        configMenu.add(captureSelectionAreaItem);
         JMenuItem apiKeyItem = new JMenuItem("AI API Config");
         apiKeyItem.addActionListener(e -> configSelection.showAIAPIConfig());
         configMenu.add(apiKeyItem);
@@ -345,7 +361,7 @@ public class ZeDebooleanizer extends JFrame {
         stopRecording = new JButton("StopAudio");
         configSelection = new ConfigSelection(this, deBooleanizerConfig, gnvs -> {
             log.getLogger().info(""+gnvs);
-            aiApi.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, gnvs.getValue("ai-api-key")));
+            aiApi.setHTTPAuthorization( HTTPAuthorization.createBearer(gnvs.getValue("ai-api-key")));
             aiApi.updateURL(gnvs.getValue("ai-api-url"));
         });
         autoCopyToClipboardCB = new JCheckBox("AutoCopy");
@@ -658,21 +674,22 @@ public class ZeDebooleanizer extends JFrame {
 
 
                     //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
-                    aiApi.setHTTPAuthorization(new HTTPAuthorization(HTTPAuthScheme.BEARER, deBooleanizerConfig.getValue("ai-api-key")));
+                    aiApi.setHTTPAuthorization( HTTPAuthorization.createBearer(deBooleanizerConfig.getValue("ai-api-key")));
                     long ts = System.currentTimeMillis();
+                    if (log.isEnabled()) log.getLogger().info("Sending call with model " + models[i] + " to " + prompt);
                     response = aiApi.syncCall(AIAPIBuilder.Command.COMPLETION, request);
                     ts = System.currentTimeMillis() - ts;
                     if (log.isEnabled()) log.getLogger().info("" + response);
                     NVGenericMapList choices = (NVGenericMapList) response.get("choices");
 
 
-                    if (log.isEnabled()) log.getLogger().info("" + choices);
+                    //if (log.isEnabled()) log.getLogger().info("" + choices);
                     NVGenericMap firstChoice = choices.getValue().get(0);
-                    if (log.isEnabled()) log.getLogger().info("" + firstChoice);
+                    //if (log.isEnabled()) log.getLogger().info("" + firstChoice);
                     NVGenericMap message = (NVGenericMap) firstChoice.get("message");
 
                     content = message.getValue("content");
-                    if (log.isEnabled()) log.getLogger().info("Content\n" + content);
+                    //if (log.isEnabled()) log.getLogger().info("Content\n" + content);
 
 
                     SwingUtilities.invokeLater(() -> captureTextArea.setText("" + message.getValue("content")));
@@ -755,15 +772,18 @@ public class ZeDebooleanizer extends JFrame {
 
     private void selectProcessing() {
         this.setVisible(false);
-        try {
-            selectedArea = GUIUtil.captureSelectedArea();
-            if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            this.setVisible(true);
-        }
-
+        // GUIUtil.captureSelectedArea() blocks until the selection is made,
+        // it must run off the EDT or the SelectionWindow never gets mouse events
+        TaskUtil.defaultTaskProcessor().execute(() -> {
+            try {
+                selectedArea = GUIUtil.captureSelectedArea();
+                if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                SwingUtilities.invokeLater(() -> setVisible(true));
+            }
+        });
     }
 
 
@@ -847,6 +867,10 @@ public class ZeDebooleanizer extends JFrame {
         return "";
     }
 
+    private  void selectCaptureArea() throws InterruptedException, AWTException {
+        selectedArea = GUIUtil.captureSelectedArea();
+        if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
+    }
 
     // Main method
     public static void main(String... args) {
@@ -887,16 +911,7 @@ public class ZeDebooleanizer extends JFrame {
             String webServerConfig = params.stringValue("web-config", true);
 
 
-            if (selectArea) {
-                try {
-                    selectedArea = GUIUtil.captureSelectedArea();
-                    if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
-                } catch (AWTException e) {
-                    throw new RuntimeException(e);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+
 
 
             ZeDebooleanizer app = null;
@@ -963,6 +978,9 @@ public class ZeDebooleanizer extends JFrame {
                     appConst.configSelection.showAIAPIConfig();
             });
 
+            if (selectArea) {
+                app.selectCaptureArea();
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
