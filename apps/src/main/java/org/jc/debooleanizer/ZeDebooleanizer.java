@@ -11,6 +11,7 @@ import io.xlogistx.common.util.NVColor;
 import io.xlogistx.gui.DynamicComboBox;
 import io.xlogistx.gui.GUIUtil;
 import io.xlogistx.gui.LedWidget;
+import io.xlogistx.gui.MDViewerPanel;
 import io.xlogistx.gui.TreeTextWidget;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
@@ -27,13 +28,13 @@ import org.zoxweb.shared.annotation.EndPointProp;
 import org.zoxweb.shared.annotation.MappedProp;
 import org.zoxweb.shared.filters.StringFilter;
 import org.zoxweb.shared.http.HTTPAuthScheme;
-import org.zoxweb.shared.http.HTTPAuthorization;
 import org.zoxweb.shared.http.HTTPMethod;
 import org.zoxweb.shared.http.HTTPServerConfig;
 import org.zoxweb.shared.util.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -60,8 +61,8 @@ public class ZeDebooleanizer extends JFrame {
     private JTextField refreshRateField;
     //private FilterPromptPanel filterPromptPanel;
     private JTextArea responseFilterTA;
-    private JTextArea captureTextArea;
-    private JTextArea audioTextArea;
+    private MDViewerPanel captureViewer;
+    private MDViewerPanel audioViewer;
     private JFileChooser fileChooser;
     //private JButton fileChooserButton;
     private JButton stopRecording;
@@ -84,7 +85,7 @@ public class ZeDebooleanizer extends JFrame {
             .mapStatus(AudioRecorder.Status.PROCESSING, NVColor.BOOTSTRAP_BLUE.color());
     private JButton audioButton;
 
-    private final AIAPI aiApi = AIAPIBuilder.SINGLETON.createAPI("capture", "gpt capture api", null);
+    private volatile AIAPI aiApi = null;
     private AudioRecorder audioRecorder;
 
 
@@ -287,23 +288,9 @@ public class ZeDebooleanizer extends JFrame {
 //        JLabel resultLabel = new JLabel("Capture Result");
 //        JLabel promptLabel = new JLabel("Audio Result");
 
-        // TextAreas
-        captureTextArea = GUIUtil.configureTextArea(new JTextArea(), null, null);
-        audioTextArea = GUIUtil.configureTextArea(new JTextArea(), null, null);
-
-//        filterPromptPanel = new FilterPromptPanel();
-//        filterPromptPanel.setPromptInputText("Analyse the image and respond with solution only");
-
-        // Make TextAreas wrap lines and scrollable
-//        resultTextArea.setLineWrap(true);
-//        resultTextArea.setWrapStyleWord(true);
-
-//        promptTextArea.setLineWrap(true);
-//        promptTextArea.setWrapStyleWord(true);
-
-        JScrollPane captureScrollPane = GUIUtil.createScrollPane(captureTextArea, "Capture Result", null, new Dimension(250, 150));
-
-        JScrollPane audioScrollPane = GUIUtil.createScrollPane(audioTextArea, "Audio Result", null, new Dimension(250, 150));
+        // Markdown viewers, they scroll on their own do not wrap them in a scroll pane
+        captureViewer = configureMDViewer(new MDViewerPanel().setNVGMDecoder(AIAPI.AIMDDecoder), "Capture Result", new Dimension(250, 150));
+        audioViewer = configureMDViewer(new MDViewerPanel(), "Audio Result", new Dimension(250, 150));
 
         // Insets for padding
         Insets padding = new Insets(5, 5, 5, 5);
@@ -328,13 +315,24 @@ public class ZeDebooleanizer extends JFrame {
         gbc.weighty = 1.0; // Allows vertical expansion
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(captureScrollPane, gbc);
+        panel.add(captureViewer, gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 1;
-        panel.add(audioScrollPane, gbc);
+        panel.add(audioViewer, gbc);
 
         return panel;
+    }
+
+    private static MDViewerPanel configureMDViewer(MDViewerPanel viewer, String title, Dimension dimension) {
+        TitledBorder border = BorderFactory.createTitledBorder(title);
+        border.setTitleFont(new Font("SansSerif", Font.BOLD, 12));
+        viewer.setBorder(border);
+        viewer.setPreferredSize(dimension);
+        // the viewer has its own internal scroll pane, drop its border so it
+        // does not draw a second frame inside the titled border
+        viewer.getScrollPane().setBorder(null);
+        return viewer;
     }
 
     private void initComponents() {
@@ -361,8 +359,9 @@ public class ZeDebooleanizer extends JFrame {
         stopRecording = new JButton("StopAudio");
         configSelection = new ConfigSelection(this, deBooleanizerConfig, gnvs -> {
             log.getLogger().info(""+gnvs);
-            aiApi.setHTTPAuthorization( HTTPAuthorization.createBearer(gnvs.getValue("ai-api-key")));
-            aiApi.updateURL(gnvs.getValue("ai-api-url"));
+            aiApi = AIAPIBuilder.createAIAPI(gnvs.getValue("ai-api-type"), null, gnvs.getValue("ai-api-key"));
+            // the default client can time out on long calls, always use the tuned one
+            aiApi.updateOkHttpClient(httpClient);
         });
         autoCopyToClipboardCB = new JCheckBox("AutoCopy");
         autoCopyToClipboardCB.setSelected(true);
@@ -464,7 +463,12 @@ public class ZeDebooleanizer extends JFrame {
 
         // Initially, stop button is disabled
         stopButton.setEnabled(false);
-
+        // audio recorder failed to initialize, disable the audio controls
+        if (audioRecorder == null) {
+            audioButton.setEnabled(false);
+            stopRecording.setEnabled(false);
+        }
+        aiApi = AIAPIBuilder.createAIAPI(deBooleanizerConfig.getValue("ai-api-type"), null, deBooleanizerConfig.getValue("ai-api-key"));
         aiApi.updateOkHttpClient(httpClient);
 
         // put it here
@@ -508,6 +512,10 @@ public class ZeDebooleanizer extends JFrame {
 
 
     private void processSpeechChatGPT() throws IOException {
+        if (audioRecorder == null) {
+            if (log.isEnabled()) log.getLogger().info("No audio recorder available");
+            return;
+        }
         boolean locked = lock.tryLock();
         if (locked) {
             try {
@@ -540,14 +548,14 @@ public class ZeDebooleanizer extends JFrame {
                                 String response = aiApi.transcribe(recordedData, "AudioClip.wav");
                                 if (log.isEnabled()) log.getLogger().info("transcribe: " + response);
                                 final String toDisplay = response;
-                                SwingUtilities.invokeLater(() -> audioTextArea.setText(toDisplay));
+                                SwingUtilities.invokeLater(() -> audioViewer.setMarkdown(toDisplay));
 
                                 String[] models = recordingModelName.getText().split(",");
                                 for (int i = 0; i < models.length; i++) {
                                     if (SUS.isNotEmpty(models[i])) {
                                         response = aiApi.completion(models[i], response, 5000);
                                         final String text = response;
-                                        SwingUtilities.invokeLater(() -> audioTextArea.setText(text));
+                                        SwingUtilities.invokeLater(() -> audioViewer.setMarkdown(text));
                                     }
 
                                 }
@@ -660,10 +668,16 @@ public class ZeDebooleanizer extends JFrame {
 //            }
 
 
+            String selectedModels = aiModelDCB.getSelectedItem();
+            if (SUS.isEmpty(selectedModels)) {
+                if (log.isEnabled()) log.getLogger().info("No AI model selected, capture skipped");
+                return null;
+            }
+
             if (SUS.isNotEmpty(prompt)) {
                 UByteArrayOutputStream baos = new UByteArrayOutputStream();
                 ImageIO.write(image, "png", baos);
-                String[] models = aiModelDCB.getSelectedItem().split(",");
+                String[] models = selectedModels.split(",");
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
@@ -674,10 +688,9 @@ public class ZeDebooleanizer extends JFrame {
 
 
                     //response = GSONUtil.fromJSONDefault(rd.getDataAsString(), NVGenericMap.class);
-                    aiApi.setHTTPAuthorization( HTTPAuthorization.createBearer(deBooleanizerConfig.getValue("ai-api-key")));
                     long ts = System.currentTimeMillis();
                     if (log.isEnabled()) log.getLogger().info("Sending call with model " + models[i] + " to " + prompt);
-                    response = aiApi.syncCall(AIAPIBuilder.Command.COMPLETION, request);
+                    response = aiApi.syncCall(AIAPIBuilder.Command.COMPLETION, null, request);
                     ts = System.currentTimeMillis() - ts;
                     if (log.isEnabled()) log.getLogger().info("" + response);
                     NVGenericMapList choices = (NVGenericMapList) response.get("choices");
@@ -692,7 +705,9 @@ public class ZeDebooleanizer extends JFrame {
                     //if (log.isEnabled()) log.getLogger().info("Content\n" + content);
 
 
-                    SwingUtilities.invokeLater(() -> captureTextArea.setText("" + message.getValue("content")));
+//                    SwingUtilities.invokeLater(() -> captureViewer.setMarkdown("" + message.getValue("content")));
+                    NVGenericMap finalResponse = response;
+                    SwingUtilities.invokeLater(() -> captureViewer.setMarkdown(finalResponse));
                     if(log.isEnabled()) log.getLogger().info("Last request took " + Const.TimeInMillis.toString(ts));
                 }
 
@@ -706,7 +721,7 @@ public class ZeDebooleanizer extends JFrame {
                         toClipboard = (String) content;
 
                     GUIUtil.copyToClipboard(SUS.isNotEmpty(toClipboard) ? toClipboard : "" + content);
-                    if (baseFileName != null) {
+                    if (baseFileName != null && sf != null && SUS.isNotEmpty(toClipboard)) {
                         File file = new File(chosenDir, baseFileName + "." + sf.getExtension());
                         try (OutputStream os = Files.newOutputStream(file.toPath())) {
                             os.write(toClipboard.getBytes());
@@ -881,7 +896,9 @@ public class ZeDebooleanizer extends JFrame {
             boolean selectArea = params.booleanValue("cap", true);
             ocrApiKey = params.stringValue("ocr-key", true);
             String aiAPIKey = params.stringValue("ai-api-key", true);
-            String aiAPIURL = params.stringValue("ai-api-url", true);
+            Enum<?> aiAPIType = params.enumValue("ai-api-type", AIAPIBuilder.AIAPIType.values());
+            if(aiAPIType == null)
+                throw new NullPointerException("ai-api-type is null");
             aiModel = params.stringValue("ai-model", true);
             String jsonFilterFile = params.stringValue("json-filter", true);
             String jsonAIConfigFile = params.stringValue("json-ai-config", true);
@@ -943,6 +960,12 @@ public class ZeDebooleanizer extends JFrame {
             NVGenericMap promptsConst = prompts;
             NVStringList modelsConst = models;
             SwingUtilities.invokeLater(() -> {
+                appConst.deBooleanizerConfig.build("ai-api-name", "openai");
+
+                appConst.deBooleanizerConfig.build(new NVEnum("ai-api-type", aiAPIType));
+//                else
+//                    appConst.deBooleanizerConfig.build("ai-api-url", appConst.aiApi.getEndPoints()[0].getConfig().getURL());
+                appConst.deBooleanizerConfig.build("ai-api-key", aiAPIKey);
                 appConst.initComponents();
                 if (SUS.isNotEmpty(filterContentConst)) {
                     appConst.responseFilterTA.setText(filterContentConst);
@@ -965,12 +988,7 @@ public class ZeDebooleanizer extends JFrame {
 
 
 
-                appConst.deBooleanizerConfig.build("ai-api-name", "openai");
-                if(aiAPIURL != null)
-                    appConst.deBooleanizerConfig.build("ai-api-url", aiAPIURL);
-                else
-                    appConst.deBooleanizerConfig.build("ai-api-url", appConst.aiApi.getEndPoints()[0].getConfig().getURL());
-                appConst.deBooleanizerConfig.build("ai-api-key", aiAPIKey);
+
 
 
                 //appConst.configSelection.setAIAPIKey(aiAPIKey);
@@ -985,7 +1003,8 @@ public class ZeDebooleanizer extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
 
-            System.err.println("Usage: cap=[on/off] ai-api-key=[ai-api-key] api-url=[base-api-url] ai-model=[ai-model] json-ai-config=[data-filter-file]");
+            System.err.println("Usage: cap=[on/off] ai-api-type=" + java.util.Arrays.toString(AIAPIBuilder.AIAPIType.values()) +
+                    " ai-api-key=[ai-api-key] ai-model=[ai-model] json-filter=[json-filter-file] json-ai-config=[json-ai-config-file] web-config=[web-server-config-file]");
         }
     }
 }
