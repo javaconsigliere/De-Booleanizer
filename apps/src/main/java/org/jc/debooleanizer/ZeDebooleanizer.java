@@ -19,6 +19,7 @@ import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
 import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
+import org.zoxweb.server.io.UByteArrayInputStream;
 import org.zoxweb.server.io.UByteArrayOutputStream;
 import org.zoxweb.server.logging.LogWrapper;
 import org.zoxweb.server.task.TaskUtil;
@@ -681,8 +682,14 @@ public class ZeDebooleanizer extends JFrame {
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
-                    if (content == null)
-                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, baos, "png");
+                    if (content == null) {
+                        int oldSize = baos.size();
+                        long ts = System.currentTimeMillis();
+                        UByteArrayInputStream compressedImage = GUIUtil.compressImage(baos, 1536, 0.8f);
+                        ts = System.currentTimeMillis() - ts;
+                        if(log.isEnabled()) log.getLogger().info("Original size: " + oldSize + " new size: " + compressedImage.available() + " delta: " + (oldSize - compressedImage.available()) + " compression took: " + Const.TimeInMillis.toString(ts));
+                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, "jpeg", compressedImage);
+                    }
                     else
                         request = AIAPIBuilder.SINGLETON.toPromptParams(models[i], "" + content, 5000);
 
