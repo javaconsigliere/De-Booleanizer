@@ -12,10 +12,11 @@ import io.xlogistx.gui.DynamicComboBox;
 import io.xlogistx.gui.GUIUtil;
 import io.xlogistx.gui.LedWidget;
 import io.xlogistx.gui.MDViewerPanel;
+import io.xlogistx.gui.SelectionArea;
+import io.xlogistx.gui.SelectionAreaSet;
 import io.xlogistx.gui.TreeTextWidget;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
-import net.sourceforge.tess4j.TesseractException;
 import okhttp3.OkHttpClient;
 import org.zoxweb.server.http.OkHTTPCall;
 import org.zoxweb.server.io.IOUtil;
@@ -42,8 +43,12 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -72,7 +77,9 @@ public class ZeDebooleanizer extends JFrame {
     private JCheckBox autoCopyToClipboardCB;
     private JCheckBox uniqueCaptureCB = null;
     private ConfigSelection configSelection;
-    private BufferedImage lastCapture;
+    // last encoded snapshot per selection area name, used by the unique-capture check;
+    // stored as bytes so later stream consumers can't invalidate the cache
+    private final Map<String, byte[]> lastCaptures = new ConcurrentHashMap<>();
     private TreeTextWidget promptsDCB;
     private final NVGenericMap deBooleanizerConfig = new NVGenericMap("APIConfig");
 
@@ -95,7 +102,10 @@ public class ZeDebooleanizer extends JFrame {
     private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, true,null, 300, true, 10, 60).build();
 
 
-    private Rectangle selectedArea;
+    private final SelectionAreaSet selectionAreaSet = new SelectionAreaSet();
+    // created eagerly so the startup cap=yes selection can register its area
+    // before initComponents() lays it out
+    private final CaptureAreasWidget captureAreasWidget = new CaptureAreasWidget(selectionAreaSet);
     private final RateCounter rc = new RateCounter("app");
 
     //private AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -157,22 +167,6 @@ public class ZeDebooleanizer extends JFrame {
 
 
         JMenu configMenu = new JMenu("Config");
-        JMenuItem captureSelectionAreaItem = new JMenuItem("Capture Selection Area");
-        captureSelectionAreaItem.addActionListener(e -> {
-            setVisible(false);
-            // GUIUtil.captureSelectedArea() blocks until the selection is made,
-            // it must run off the EDT or the SelectionWindow never gets mouse events
-            TaskUtil.defaultTaskProcessor().execute(() -> {
-                try {
-                    selectCaptureArea();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                } finally {
-                    SwingUtilities.invokeLater(() -> setVisible(true));
-                }
-            });
-        });
-        configMenu.add(captureSelectionAreaItem);
         JMenuItem apiKeyItem = new JMenuItem("AI API Config");
         apiKeyItem.addActionListener(e -> configSelection.showAIAPIConfig());
         configMenu.add(apiKeyItem);
@@ -357,6 +351,15 @@ public class ZeDebooleanizer extends JFrame {
         stopButton = new JButton("Stop");
         clearPromptButton = new JButton("Clear Prompt");
         selectButton = new JButton("Select");
+        selectButton.setToolTipText("Redefine the capture set with a single area");
+        captureAreasWidget.setAddAction(() -> selectProcessing(true))
+                .setAreaRemovedListener(sa -> lastCaptures.remove(sa.getName()))
+                .setAreaRenamedListener((sa, oldName) -> {
+                    // keep the unique-capture cache attached to the renamed area
+                    byte[] last = lastCaptures.remove(oldName);
+                    if (last != null)
+                        lastCaptures.put(sa.getName(), last);
+                });
         stopRecording = new JButton("StopAudio");
         configSelection = new ConfigSelection(this, deBooleanizerConfig, gnvs -> {
             log.getLogger().info(""+gnvs);
@@ -395,6 +398,7 @@ public class ZeDebooleanizer extends JFrame {
                 uniqueCaptureCB,
                 new JLabel("Model"),
                 aiModelDCB));
+        capturePanel.add(captureAreasWidget);
         capturePanel.add(promptsDCB);
         capturePanel.add(GUIUtil.createScrollPane(responseFilterTA, "Response-Filter", null, null));
         controlPanel.add(capturePanel);
@@ -434,7 +438,7 @@ public class ZeDebooleanizer extends JFrame {
         getContentPane().add(createWorkPanel(), BorderLayout.CENTER);
 
         // Button actions
-        selectButton.addActionListener(e -> selectProcessing());
+        selectButton.addActionListener(e -> selectProcessing(false));
         startButton.addActionListener(e -> startProcessing());
         audioButton.addActionListener(e -> {
             try {
@@ -478,7 +482,7 @@ public class ZeDebooleanizer extends JFrame {
     }
 
     @EndPointProp(methods = {HTTPMethod.GET}, name = "to-chat-gpt", uris = "/capture-to-gpt")
-    public NVGenericMap captureToGPT() throws TesseractException, IOException, AWTException {
+    public NVGenericMap captureToGPT() throws IOException {
 
         if (!lock.isLocked()) {
             return processCaptureChatGPT();
@@ -591,7 +595,7 @@ public class ZeDebooleanizer extends JFrame {
     }
 
 
-    private NVGenericMap processCaptureChatGPT() throws AWTException, IOException, TesseractException {
+    private NVGenericMap processCaptureChatGPT() throws IOException {
         NVGenericMap request = null;
         NVGenericMap response = null;
         StringFilter sf = null;
@@ -613,30 +617,44 @@ public class ZeDebooleanizer extends JFrame {
             SwingUtilities.invokeLater(() -> captureLed.setStatus(Const.Bool.OFF));
             captureButton.setEnabled(false);
             String prompt = null;
-            // Capture the selected screen area
-            BufferedImage image = GUIUtil.captureSelectedArea(selectedArea);
+            // Capture the checked selection areas in one sweep, already jpeg encoded
+            // for the vision call; the widget only creates areas with a non-empty
+            // rectangle so images stays index-aligned with checkedAreas
+            SelectionArea[] checkedAreas = captureAreasWidget.getCheckedAreas();
+            UByteArrayInputStream[] images = selectionAreaSet.snapShotsAsInputStreams("jpeg", checkedAreas);
+            if (images.length == 0) {
+                if (log.isEnabled()) log.getLogger().info("No capture area checked, capture skipped");
+                return null;
+            }
 
 
             rc.start();
-            if (uniqueCaptureCB.isSelected() && GUIUtil.compareImages(image, lastCapture)) {
-                lastCapture = image;
+            if (uniqueCaptureCB.isSelected() && matchesLastCaptures(checkedAreas, images)) {
                 rc.stop();
                 if (log.isEnabled())
                     log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
                 return null;
-            } else {
-                lastCapture = image;
             }
+            for (int i = 0; i < images.length; i++) {
+                ByteBuffer bb = peek(images[i]);
+                lastCaptures.put(checkedAreas[i].getName(),
+                        Arrays.copyOfRange(bb.array(), bb.position(), bb.position() + bb.remaining()));
+            }
+
             File chosenDir = fileChooser.getSelectedFile();
             String baseFileName = null;
 
             if (chosenDir != null && enableLoggingItem.isSelected()) {
                 if (chosenDir.isDirectory()) {
                     baseFileName = DateUtil.FILE_DATE_FORMAT.format(new Date());
-                    File file = new File(chosenDir, baseFileName + ".png");
-                    ImageIO.write(image, "png", file);
-                    log.getLogger().info("ext: " + SharedStringUtil.valueAfterRightToken(file.getName(), ".") +
-                            " filename: " + file);
+                    for (int i = 0; i < images.length; i++) {
+                        File file = new File(chosenDir, baseFileName + "-" + checkedAreas[i].getName() + ".jpg");
+                        ByteBuffer bb = peek(images[i]);
+                        try (OutputStream os = Files.newOutputStream(file.toPath())) {
+                            os.write(bb.array(), bb.position(), bb.remaining());
+                        }
+                        log.getLogger().info("filename: " + file);
+                    }
                 }
             }
 
@@ -676,19 +694,16 @@ public class ZeDebooleanizer extends JFrame {
             }
 
             if (SUS.isNotEmpty(prompt)) {
-                UByteArrayOutputStream baos = new UByteArrayOutputStream();
-                ImageIO.write(image, "png", baos);
                 String[] models = selectedModels.split(",");
 
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
                     if (content == null) {
-                        int oldSize = baos.size();
-                        long ts = System.currentTimeMillis();
-                        UByteArrayInputStream compressedImage = GUIUtil.compressImage(baos, 1536, 0.8f);
-                        ts = System.currentTimeMillis() - ts;
-                        if(log.isEnabled()) log.getLogger().info("Original size: " + oldSize + " new size: " + compressedImage.available() + " delta: " + (oldSize - compressedImage.available()) + " compression took: " + Const.TimeInMillis.toString(ts));
-                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, "jpeg", compressedImage);
+                        // rewind the payloads: peek() above and a previous model call
+                        // both leave the streams consumed
+                        for (UByteArrayInputStream image : images)
+                            image.reset();
+                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, "jpeg", images);
                     }
                     else
                         request = AIAPIBuilder.SINGLETON.toPromptParams(models[i], "" + content, 5000);
@@ -788,18 +803,43 @@ public class ZeDebooleanizer extends JFrame {
         // Stop the timer
         if (future != null) {
             future.cancel(true);
-            lastCapture = null;
+            lastCaptures.clear();
         }
     }
 
-    private void selectProcessing() {
+    /**
+     * Non-consuming view of the stream content: {@link UByteArrayInputStream#wrap()}
+     * advances the stream to its end, so rewind before and after taking the view.
+     */
+    private static ByteBuffer peek(UByteArrayInputStream is) {
+        is.reset();
+        ByteBuffer ret = is.wrap();
+        is.reset();
+        return ret;
+    }
+
+    /**
+     * @param areas  the captured areas, index-aligned with images
+     * @param images the freshly captured, encoded snapshots
+     * @return true if every image byte-matches the previous capture of its area,
+     *         the encoding is deterministic so equal pixels give equal bytes
+     */
+    private boolean matchesLastCaptures(SelectionArea[] areas, UByteArrayInputStream[] images) {
+        for (int i = 0; i < images.length; i++) {
+            byte[] last = lastCaptures.get(areas[i].getName());
+            if (last == null || !ByteBuffer.wrap(last).equals(peek(images[i])))
+                return false;
+        }
+        return true;
+    }
+
+    private void selectProcessing(boolean append) {
         this.setVisible(false);
         // GUIUtil.captureSelectedArea() blocks until the selection is made,
         // it must run off the EDT or the SelectionWindow never gets mouse events
         TaskUtil.defaultTaskProcessor().execute(() -> {
             try {
-                selectedArea = GUIUtil.captureSelectedArea();
-                if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
+                selectCaptureArea(append);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -889,9 +929,24 @@ public class ZeDebooleanizer extends JFrame {
         return "";
     }
 
-    private  void selectCaptureArea() throws InterruptedException, AWTException {
-        selectedArea = GUIUtil.captureSelectedArea();
-        if (log.isEnabled()) log.getLogger().info("SelectedArea: " + selectedArea);
+    private void selectCaptureArea() throws InterruptedException, AWTException {
+        selectCaptureArea(false);
+    }
+
+    /**
+     * Lets the user drag out a rectangle and registers it with the capture areas widget.
+     *
+     * @param append if false the current set is replaced, if true the new area is added to it
+     */
+    private void selectCaptureArea(boolean append) throws InterruptedException, AWTException {
+        if (!append) {
+            captureAreasWidget.clearAreas();
+            lastCaptures.clear();
+        }
+        Rectangle area = GUIUtil.captureSelectedArea();
+        if (log.isEnabled()) log.getLogger().info("SelectedArea: " + area);
+        if (area != null && !area.isEmpty())
+            captureAreasWidget.addArea(area);
     }
 
     // Main method
