@@ -8,13 +8,7 @@ import io.xlogistx.api.ai.AIAPIBuilder;
 import io.xlogistx.audio.AudioRecorder;
 import io.xlogistx.audio.AudioUtil;
 import io.xlogistx.common.util.NVColor;
-import io.xlogistx.gui.DynamicComboBox;
-import io.xlogistx.gui.GUIUtil;
-import io.xlogistx.gui.LedWidget;
-import io.xlogistx.gui.MDViewerPanel;
-import io.xlogistx.gui.SelectionArea;
-import io.xlogistx.gui.SelectionAreaSet;
-import io.xlogistx.gui.TreeTextWidget;
+import io.xlogistx.gui.*;
 import io.xlogistx.http.NIOHTTPServer;
 import io.xlogistx.http.NIOHTTPServerCreator;
 import okhttp3.OkHttpClient;
@@ -29,7 +23,6 @@ import org.zoxweb.server.util.GSONUtil;
 import org.zoxweb.shared.annotation.EndPointProp;
 import org.zoxweb.shared.annotation.MappedProp;
 import org.zoxweb.shared.filters.StringFilter;
-import org.zoxweb.shared.http.HTTPAuthScheme;
 import org.zoxweb.shared.http.HTTPMethod;
 import org.zoxweb.shared.http.HTTPServerConfig;
 import org.zoxweb.shared.util.*;
@@ -43,9 +36,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,9 +68,8 @@ public class ZeDebooleanizer extends JFrame {
     private JCheckBox autoCopyToClipboardCB;
     private JCheckBox uniqueCaptureCB = null;
     private ConfigSelection configSelection;
-    // last encoded snapshot per selection area name, used by the unique-capture check;
-    // stored as bytes so later stream consumers can't invalidate the cache
-    private final Map<String, byte[]> lastCaptures = new ConcurrentHashMap<>();
+    // last snapshot per capture area name, used by the unique-capture check
+    private final Map<String, SnapShot> lastCaptures = new ConcurrentHashMap<>();
     private TreeTextWidget promptsDCB;
     private final NVGenericMap deBooleanizerConfig = new NVGenericMap("APIConfig");
 
@@ -102,10 +92,10 @@ public class ZeDebooleanizer extends JFrame {
     private final OkHttpClient httpClient = OkHTTPCall.createOkHttpBuilder(null, true,null, 300, true, 10, 60).build();
 
 
-    private final SelectionAreaSet selectionAreaSet = new SelectionAreaSet();
+    private final CaptureAreaSet captureAreaSet = new CaptureAreaSet();
     // created eagerly so the startup cap=yes selection can register its area
     // before initComponents() lays it out
-    private final CaptureAreasWidget captureAreasWidget = new CaptureAreasWidget(selectionAreaSet);
+    private final CaptureAreasWidget captureAreasWidget = new CaptureAreasWidget(captureAreaSet);
     private final RateCounter rc = new RateCounter("app");
 
     //private AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -356,7 +346,7 @@ public class ZeDebooleanizer extends JFrame {
                 .setAreaRemovedListener(sa -> lastCaptures.remove(sa.getName()))
                 .setAreaRenamedListener((sa, oldName) -> {
                     // keep the unique-capture cache attached to the renamed area
-                    byte[] last = lastCaptures.remove(oldName);
+                    SnapShot last = lastCaptures.remove(oldName);
                     if (last != null)
                         lastCaptures.put(sa.getName(), last);
                 });
@@ -454,7 +444,7 @@ public class ZeDebooleanizer extends JFrame {
             try {
                 TaskUtil.defaultTaskScheduler().queue(200, () -> {
                     try {
-                        processCaptureChatGPT();
+                        sendToAI();
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }
@@ -485,7 +475,7 @@ public class ZeDebooleanizer extends JFrame {
     public NVGenericMap captureToGPT() throws IOException {
 
         if (!lock.isLocked()) {
-            return processCaptureChatGPT();
+            return sendToAI();
         }
 
         return new NVGenericMap().build("system", "busy");
@@ -595,7 +585,7 @@ public class ZeDebooleanizer extends JFrame {
     }
 
 
-    private NVGenericMap processCaptureChatGPT() throws IOException {
+    private NVGenericMap sendToAI() throws IOException {
         NVGenericMap request = null;
         NVGenericMap response = null;
         StringFilter sf = null;
@@ -617,29 +607,24 @@ public class ZeDebooleanizer extends JFrame {
             SwingUtilities.invokeLater(() -> captureLed.setStatus(Const.Bool.OFF));
             captureButton.setEnabled(false);
             String prompt = null;
-            // Capture the checked selection areas in one sweep, already jpeg encoded
-            // for the vision call; the widget only creates areas with a non-empty
-            // rectangle so images stays index-aligned with checkedAreas
-            SelectionArea[] checkedAreas = captureAreasWidget.getCheckedAreas();
-            UByteArrayInputStream[] images = selectionAreaSet.snapShotsAsInputStreams("jpeg", checkedAreas);
-            if (images.length == 0) {
+            // Capture the checked areas in one sweep; each snapshot carries its
+            // area's name as source id and compares by image content
+            SnapShot[] snapShots = captureAreaSet.takeSnapShots(captureAreasWidget.getCheckedAreas());
+            if (snapShots.length == 0) {
                 if (log.isEnabled()) log.getLogger().info("No capture area checked, capture skipped");
                 return null;
             }
 
 
             rc.start();
-            if (uniqueCaptureCB.isSelected() && matchesLastCaptures(checkedAreas, images)) {
+            if (uniqueCaptureCB.isSelected() && matchesLastCaptures(snapShots)) {
                 rc.stop();
                 if (log.isEnabled())
                     log.getLogger().info("Image compare equal, it took: " + Const.TimeInMillis.toString(rc.lastDeltaInMillis()));
                 return null;
             }
-            for (int i = 0; i < images.length; i++) {
-                ByteBuffer bb = peek(images[i]);
-                lastCaptures.put(checkedAreas[i].getName(),
-                        Arrays.copyOfRange(bb.array(), bb.position(), bb.position() + bb.remaining()));
-            }
+            for (SnapShot snapShot : snapShots)
+                lastCaptures.put(snapShot.getSourceID(), snapShot);
 
             File chosenDir = fileChooser.getSelectedFile();
             String baseFileName = null;
@@ -647,12 +632,9 @@ public class ZeDebooleanizer extends JFrame {
             if (chosenDir != null && enableLoggingItem.isSelected()) {
                 if (chosenDir.isDirectory()) {
                     baseFileName = DateUtil.FILE_DATE_FORMAT.format(new Date());
-                    for (int i = 0; i < images.length; i++) {
-                        File file = new File(chosenDir, baseFileName + "-" + checkedAreas[i].getName() + ".jpg");
-                        ByteBuffer bb = peek(images[i]);
-                        try (OutputStream os = Files.newOutputStream(file.toPath())) {
-                            os.write(bb.array(), bb.position(), bb.remaining());
-                        }
+                    for (SnapShot snapShot : snapShots) {
+                        File file = new File(chosenDir, baseFileName + "-" + snapShot.getSourceID() + ".jpg");
+                        ImageIO.write(snapShot.getImage(), "jpg", file);
                         log.getLogger().info("filename: " + file);
                     }
                 }
@@ -699,11 +681,25 @@ public class ZeDebooleanizer extends JFrame {
                 Object content = null;
                 for (int i = 0; i < models.length; i++) {
                     if (content == null) {
-                        // rewind the payloads: peek() above and a previous model call
-                        // both leave the streams consumed
-                        for (UByteArrayInputStream image : images)
-                            image.reset();
-                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, "jpeg", images);
+                        // fresh streams every attempt, the API layer consumes them;
+                        // cap the dimensions: vision input tokens are billed per
+                        // 512px tile, so the resize is what saves tokens
+                        UByteArrayInputStream[] imagesIS = new UByteArrayInputStream[snapShots.length];
+                        for (int j = 0; j < imagesIS.length; j++) {
+
+                            imagesIS[j] = snapShots[j].getImageAsInputStream("jpeg");
+                            if (log.isEnabled()) {
+                                BufferedImage source = snapShots[j].getImage();
+                                int rawSize = source.getWidth() * source.getHeight() * 3;
+                                int jpegSize = imagesIS[j].available();
+                                log.getLogger().info(snapShots[j].getSourceID() + ": " +
+                                        source.getWidth() + "x" + source.getHeight() +
+                                        " raw " + Const.SizeInBytes.toString(rawSize) +
+                                        " -> jpeg " + Const.SizeInBytes.toString(jpegSize) +
+                                        " (" + (100 - (jpegSize * 100L) / rawSize) + "% smaller)");
+                            }
+                        }
+                        request = AIAPIBuilder.SINGLETON.toVisionParams(models[i], prompt, 5000, "jpeg", imagesIS);
                     }
                     else
                         request = AIAPIBuilder.SINGLETON.toPromptParams(models[i], "" + content, 5000);
@@ -787,7 +783,7 @@ public class ZeDebooleanizer extends JFrame {
 
         future = TaskUtil.defaultTaskScheduler().scheduleAtFixedRate(() -> {
             try {
-                processCaptureChatGPT();
+                sendToAI();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -808,26 +804,13 @@ public class ZeDebooleanizer extends JFrame {
     }
 
     /**
-     * Non-consuming view of the stream content: {@link UByteArrayInputStream#wrap()}
-     * advances the stream to its end, so rewind before and after taking the view.
+     * @param snapShots the freshly captured snapshots
+     * @return true if every snapshot's image content equals the previous capture
+     *         of its area; SnapShot equality is on image content only
      */
-    private static ByteBuffer peek(UByteArrayInputStream is) {
-        is.reset();
-        ByteBuffer ret = is.wrap();
-        is.reset();
-        return ret;
-    }
-
-    /**
-     * @param areas  the captured areas, index-aligned with images
-     * @param images the freshly captured, encoded snapshots
-     * @return true if every image byte-matches the previous capture of its area,
-     *         the encoding is deterministic so equal pixels give equal bytes
-     */
-    private boolean matchesLastCaptures(SelectionArea[] areas, UByteArrayInputStream[] images) {
-        for (int i = 0; i < images.length; i++) {
-            byte[] last = lastCaptures.get(areas[i].getName());
-            if (last == null || !ByteBuffer.wrap(last).equals(peek(images[i])))
+    private boolean matchesLastCaptures(SnapShot[] snapShots) {
+        for (SnapShot snapShot : snapShots) {
+            if (!snapShot.equals(lastCaptures.get(snapShot.getSourceID())))
                 return false;
         }
         return true;

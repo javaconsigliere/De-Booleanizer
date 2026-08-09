@@ -1,7 +1,7 @@
 package org.jc.debooleanizer;
 
-import io.xlogistx.gui.SelectionArea;
-import io.xlogistx.gui.SelectionAreaSet;
+import io.xlogistx.gui.CaptureArea;
+import io.xlogistx.gui.CaptureAreaSet;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -18,9 +18,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Widget that manages the capture areas of a {@link SelectionAreaSet}: one row per
- * {@link SelectionArea} with a checkbox marking whether the area is part of the next
- * capture sweep and a button to remove it, plus Add/Clear controls in a toolbar.
+ * Widget that manages the capture areas of a {@link CaptureAreaSet}: one row per
+ * {@link CaptureArea} with a checkbox marking whether the area is part of the next
+ * capture sweep, an editable name field and a button to remove it, plus Add/Clear
+ * controls in a toolbar.
  * <p>
  * All mutations go through this widget so the row display and the underlying set stay
  * in sync. {@link #addArea(Rectangle)} and {@link #clearAreas()} are safe to call from
@@ -29,23 +30,23 @@ import java.util.function.Consumer;
  */
 public class CaptureAreasWidget extends JPanel {
 
-    private final SelectionAreaSet selectionAreaSet;
+    private final CaptureAreaSet captureAreaSet;
     // monotonic so a name is never reused after a removal, per-area state keyed by
     // name elsewhere (e.g. last-capture maps) can never collide with a stale entry
     private final AtomicInteger nameSequence = new AtomicInteger();
     // checkbox state readable from any thread, the JCheckBox itself is EDT-only
-    private final Map<SelectionArea, Boolean> checkedState = new ConcurrentHashMap<>();
+    private final Map<CaptureArea, Boolean> checkedState = new ConcurrentHashMap<>();
     // EDT-only
-    private final Map<SelectionArea, JPanel> rows = new LinkedHashMap<>();
+    private final Map<CaptureArea, JPanel> rows = new LinkedHashMap<>();
     private final JPanel rowsPanel;
     private final TitledBorder titledBorder;
 
     private volatile Runnable addAction;
-    private volatile Consumer<SelectionArea> areaRemovedListener;
-    private volatile BiConsumer<SelectionArea, String> areaRenamedListener;
+    private volatile Consumer<CaptureArea> areaRemovedListener;
+    private volatile BiConsumer<CaptureArea, String> areaRenamedListener;
 
-    public CaptureAreasWidget(SelectionAreaSet selectionAreaSet) {
-        this.selectionAreaSet = selectionAreaSet;
+    public CaptureAreasWidget(CaptureAreaSet captureAreaSet) {
+        this.captureAreaSet = captureAreaSet;
         setLayout(new BorderLayout());
         titledBorder = BorderFactory.createTitledBorder("Capture Areas (0)");
         titledBorder.setTitleFont(new Font("SansSerif", Font.BOLD, 12));
@@ -96,7 +97,7 @@ public class CaptureAreasWidget extends JPanel {
      * @param listener the removal listener, may be null
      * @return this instance, for fluent chaining
      */
-    public CaptureAreasWidget setAreaRemovedListener(Consumer<SelectionArea> listener) {
+    public CaptureAreasWidget setAreaRemovedListener(Consumer<CaptureArea> listener) {
         areaRemovedListener = listener;
         return this;
     }
@@ -109,7 +110,7 @@ public class CaptureAreasWidget extends JPanel {
      * @param listener the rename listener, may be null
      * @return this instance, for fluent chaining
      */
-    public CaptureAreasWidget setAreaRenamedListener(BiConsumer<SelectionArea, String> listener) {
+    public CaptureAreasWidget setAreaRenamedListener(BiConsumer<CaptureArea, String> listener) {
         areaRenamedListener = listener;
         return this;
     }
@@ -118,70 +119,70 @@ public class CaptureAreasWidget extends JPanel {
      * Adds the given rectangle as a new named, checked capture area.
      *
      * @param area the screen rectangle to capture
-     * @return the created selection area
+     * @return the created capture area
      */
-    public SelectionArea addArea(Rectangle area) {
-        SelectionArea selectionArea = new SelectionArea("area-" + nameSequence.incrementAndGet(), null, area);
-        checkedState.put(selectionArea, Boolean.TRUE);
-        selectionAreaSet.addSelectionArea(selectionArea);
-        SwingUtilities.invokeLater(() -> addRow(selectionArea));
-        return selectionArea;
+    public CaptureArea addArea(Rectangle area) {
+        CaptureArea captureArea = new CaptureArea("area-" + nameSequence.incrementAndGet(), null, area);
+        checkedState.put(captureArea, Boolean.TRUE);
+        captureAreaSet.addCaptureArea(captureArea);
+        SwingUtilities.invokeLater(() -> addRow(captureArea));
+        return captureArea;
     }
 
     /**
      * Removes the given area from the set and the display.
      *
-     * @param selectionArea the area to remove
+     * @param captureArea the area to remove
      */
-    public void removeArea(SelectionArea selectionArea) {
-        selectionAreaSet.removeSelectionAreas(selectionArea);
-        checkedState.remove(selectionArea);
-        SwingUtilities.invokeLater(() -> removeRow(selectionArea));
-        notifyRemoved(selectionArea);
+    public void removeArea(CaptureArea captureArea) {
+        captureAreaSet.removeCaptureAreas(captureArea);
+        checkedState.remove(captureArea);
+        SwingUtilities.invokeLater(() -> removeRow(captureArea));
+        notifyRemoved(captureArea);
     }
 
     /**
      * Removes all areas from the set and the display.
      */
     public void clearAreas() {
-        SelectionArea[] areas = selectionAreaSet.getSelectionAreas();
-        selectionAreaSet.clearSelectionAreas();
+        CaptureArea[] areas = captureAreaSet.getCaptureAreas();
+        captureAreaSet.clearCaptureAreas();
         checkedState.clear();
         SwingUtilities.invokeLater(() -> {
             rows.clear();
             rowsPanel.removeAll();
             refresh();
         });
-        for (SelectionArea selectionArea : areas)
-            notifyRemoved(selectionArea);
+        for (CaptureArea captureArea : areas)
+            notifyRemoved(captureArea);
     }
 
     /**
      * @return the checked areas in insertion order, the ones the next capture sweep
      *         should shoot; never null
      */
-    public SelectionArea[] getCheckedAreas() {
-        List<SelectionArea> ret = new ArrayList<>();
-        for (SelectionArea selectionArea : selectionAreaSet.getSelectionAreas()) {
-            if (Boolean.TRUE.equals(checkedState.get(selectionArea)))
-                ret.add(selectionArea);
+    public CaptureArea[] getCheckedAreas() {
+        List<CaptureArea> ret = new ArrayList<>();
+        for (CaptureArea captureArea : captureAreaSet.getCaptureAreas()) {
+            if (Boolean.TRUE.equals(checkedState.get(captureArea)))
+                ret.add(captureArea);
         }
-        return ret.toArray(new SelectionArea[0]);
+        return ret.toArray(new CaptureArea[0]);
     }
 
-    private void addRow(SelectionArea selectionArea) {
-        Rectangle area = selectionArea.getSelectionArea();
+    private void addRow(CaptureArea captureArea) {
+        Rectangle area = captureArea.getCaptureArea();
         JCheckBox checkBox = new JCheckBox("", true);
         checkBox.setToolTipText("Include this area in the capture");
-        checkBox.addItemListener(e -> checkedState.put(selectionArea, checkBox.isSelected()));
+        checkBox.addItemListener(e -> checkedState.put(captureArea, checkBox.isSelected()));
 
-        JTextField nameField = new JTextField(selectionArea.getName(), 10);
+        JTextField nameField = new JTextField(captureArea.getName(), 10);
         nameField.setToolTipText("Area name, press Enter or leave the field to rename");
-        nameField.addActionListener(e -> commitRename(selectionArea, nameField));
+        nameField.addActionListener(e -> commitRename(captureArea, nameField));
         nameField.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
-                commitRename(selectionArea, nameField);
+                commitRename(captureArea, nameField);
             }
         });
 
@@ -190,7 +191,7 @@ public class CaptureAreasWidget extends JPanel {
         JButton removeButton = new JButton("X");
         removeButton.setMargin(new Insets(0, 4, 0, 4));
         removeButton.setToolTipText("Remove this area");
-        removeButton.addActionListener(e -> removeArea(selectionArea));
+        removeButton.addActionListener(e -> removeArea(captureArea));
 
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         row.add(removeButton);
@@ -200,7 +201,7 @@ public class CaptureAreasWidget extends JPanel {
         row.setAlignmentX(LEFT_ALIGNMENT);
         // keep BoxLayout from stretching the row vertically
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-        rows.put(selectionArea, row);
+        rows.put(captureArea, row);
         rowsPanel.add(row);
         refresh();
     }
@@ -210,33 +211,33 @@ public class CaptureAreasWidget extends JPanel {
      * one already used by another area is rejected and the field reverts to the
      * current name.
      */
-    private void commitRename(SelectionArea selectionArea, JTextField nameField) {
+    private void commitRename(CaptureArea captureArea, JTextField nameField) {
         String newName = nameField.getText() != null ? nameField.getText().trim() : "";
-        String oldName = selectionArea.getName();
+        String oldName = captureArea.getName();
         if (newName.equals(oldName))
             return;
         if (newName.isEmpty() || nameInUse(newName)) {
             nameField.setText(oldName);
             return;
         }
-        selectionArea.setName(newName);
+        captureArea.setName(newName);
         // normalize the display in case the typed value had surrounding whitespace
         nameField.setText(newName);
-        BiConsumer<SelectionArea, String> listener = areaRenamedListener;
+        BiConsumer<CaptureArea, String> listener = areaRenamedListener;
         if (listener != null)
-            listener.accept(selectionArea, oldName);
+            listener.accept(captureArea, oldName);
     }
 
     private boolean nameInUse(String name) {
-        for (SelectionArea selectionArea : selectionAreaSet.getSelectionAreas()) {
-            if (name.equals(selectionArea.getName()))
+        for (CaptureArea captureArea : captureAreaSet.getCaptureAreas()) {
+            if (name.equals(captureArea.getName()))
                 return true;
         }
         return false;
     }
 
-    private void removeRow(SelectionArea selectionArea) {
-        JPanel row = rows.remove(selectionArea);
+    private void removeRow(CaptureArea captureArea) {
+        JPanel row = rows.remove(captureArea);
         if (row != null) {
             rowsPanel.remove(row);
             refresh();
@@ -244,15 +245,15 @@ public class CaptureAreasWidget extends JPanel {
     }
 
     private void refresh() {
-        titledBorder.setTitle("Capture Areas (" + selectionAreaSet.getSelectionAreas().length + ")");
+        titledBorder.setTitle("Capture Areas (" + captureAreaSet.getCaptureAreas().length + ")");
         rowsPanel.revalidate();
         rowsPanel.repaint();
         repaint();
     }
 
-    private void notifyRemoved(SelectionArea selectionArea) {
-        Consumer<SelectionArea> listener = areaRemovedListener;
+    private void notifyRemoved(CaptureArea captureArea) {
+        Consumer<CaptureArea> listener = areaRemovedListener;
         if (listener != null)
-            listener.accept(selectionArea);
+            listener.accept(captureArea);
     }
 }
