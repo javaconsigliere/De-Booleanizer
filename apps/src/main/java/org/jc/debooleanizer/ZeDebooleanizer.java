@@ -687,7 +687,7 @@ public class ZeDebooleanizer extends JFrame {
                         UByteArrayInputStream[] imagesIS = new UByteArrayInputStream[snapShots.length];
                         for (int j = 0; j < imagesIS.length; j++) {
 
-                            imagesIS[j] = snapShots[j].getImageAsInputStream("jpeg");
+                            imagesIS[j] = snapShots[j].exportAsInputStream("jpeg");
                             if (log.isEnabled()) {
                                 BufferedImage source = snapShots[j].getImage();
                                 int rawSize = source.getWidth() * source.getHeight() * 3;

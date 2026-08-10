@@ -124,7 +124,7 @@ public class CaptureAreasWidget extends JPanel {
     public CaptureArea addArea(Rectangle area) {
         CaptureArea captureArea = new CaptureArea("area-" + nameSequence.incrementAndGet(), null, area);
         checkedState.put(captureArea, Boolean.TRUE);
-        captureAreaSet.addCaptureArea(captureArea);
+        captureAreaSet.addCaptureAreas(captureArea);
         SwingUtilities.invokeLater(() -> addRow(captureArea));
         return captureArea;
     }
